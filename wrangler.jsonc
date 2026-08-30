@@ -1,0 +1,13 @@
+{
+  "name": "nyg-music-hub",
+  "compatibility_date": "2026-08-30",
+  "assets": {
+    "directory": "."
+  },
+  "r2_buckets": [
+    {
+      "binding": "MUSIC_BUCKET",
+      "bucket_name": "nyg-music-store"
+    }
+  ]
+}
