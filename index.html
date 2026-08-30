@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="sw">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NYG MUSIC HUB</title>
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#faf7f9;color:#222}
+header{background:#a9005b;color:#fff;padding:24px;text-align:center}
+main{max-width:760px;margin:28px auto;padding:0 18px}
+.card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 5px 22px #0001}
+.song{display:flex;gap:16px;align-items:center}.cover{width:90px;height:90px;border-radius:14px;background:#a9005b;color:#fff;display:grid;place-items:center;font-weight:bold;font-size:24px}
+button{border:0;border-radius:12px;padding:14px;width:100%;font-size:16px;font-weight:bold;margin-top:18px}
+.buy{background:#b00060;color:#fff}.download{background:#eee;color:#777}
+.note{font-size:13px;color:#777;text-align:center;margin-top:12px}
+</style>
+</head>
+<body>
+<header><h1>NYG MUSIC HUB</h1><p>Official Music Store</p></header>
+<main>
+<div class="card">
+<h2>Karibu NYG MUSIC HUB</h2>
+<div class="song">
+<div class="cover">NYG</div>
+<div><h3>I'm Still Going On / Bado Naendelea</h3><p>NYG Music</p></div>
+</div>
+<button class="buy" onclick="startPayment()">💳 Nunua / Support — TSh 1,000</button>
+<button class="download" disabled>🔒 Download baada ya malipo</button>
+<p class="note">Download itawezeshwa baada ya malipo kuthibitishwa.</p>
+</div>
+</main>
+<script>
+function startPayment(){
+  alert("Malipopay checkout itaunganishwa hapa baada ya kuweka payment/API configuration.");
+}
+</script>
+</body>
+</html>
