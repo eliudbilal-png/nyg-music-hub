@@ -61,6 +61,23 @@ export default {
         return reply({ items });
       }
 
+      if (url.pathname === '/api/humming/upload' && request.method === 'POST') {
+        const type = (request.headers.get('content-type') || '').split(';')[0].toLowerCase();
+        const allowed = new Map([
+          ['audio/webm', 'webm'], ['audio/ogg', 'ogg'], ['audio/mp4', 'm4a'],
+          ['audio/mpeg', 'mp3'], ['audio/wav', 'wav'], ['audio/x-wav', 'wav']
+        ]);
+        if (!allowed.has(type)) return reply({ error: 'Tuma audio ya WebM, OGG, M4A, MP3 au WAV.' }, 415);
+        const length = Number(request.headers.get('content-length') || 0);
+        if (length > 15 * 1024 * 1024) return reply({ error: 'Recording imezidi MB 15.' }, 413);
+        const audio = await request.arrayBuffer();
+        if (audio.byteLength > 15 * 1024 * 1024) return reply({ error: 'Recording imezidi MB 15.' }, 413);
+        const id = crypto.randomUUID();
+        const key = `references/${id}.${allowed.get(type)}`;
+        await env.MUSIC_BUCKET.put(key, audio, { httpMetadata: { contentType: type } });
+        return reply({ id, url: `/music/${encodeURIComponent(key)}` });
+      }
+
       if (url.pathname === '/api/music/generate' && request.method === 'POST') {
         if (!env.ELEVENLABS_API_KEY) return reply({ error: 'AI engine bado haijaunganishwa.' }, 503);
         const b = await request.json().catch(() => ({}));
