@@ -17,10 +17,14 @@ async function sessionValid(request, env) {
   if (!token) return false;
   const [expires, signature] = token.split('.');
   if (!expires || !signature || Number(expires) < Date.now()) return false;
-  return signature === await sign(expires, env.ADMIN_SESSION_SECRET);
+  const expected = await sign(expires, env.ADMIN_SESSION_SECRET);
+  if (signature.length !== expected.length) return false;
+  let difference = 0;
+  for (let i = 0; i < signature.length; i++) difference |= signature.charCodeAt(i) ^ expected.charCodeAt(i);
+  return difference === 0;
 }
 
-const reply = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...headers } });
+const reply = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers } });
 
 export default {
   async fetch(request, env) {
@@ -35,9 +39,27 @@ export default {
       return reply({ ok: true }, 200, { 'set-cookie': `nyg_admin=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=28800` });
     }
 
+    if (url.pathname === '/api/admin/logout' && request.method === 'POST') {
+      return reply({ ok: true }, 200, { 'set-cookie': 'nyg_admin=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0' });
+    }
+
     if (url.pathname.startsWith('/api/')) {
       if (!await sessionValid(request, env)) return reply({ error: 'Tafadhali ingia kama admin.' }, 401);
       if (url.pathname === '/api/admin/status') return reply({ aiConfigured: Boolean(env.ELEVENLABS_API_KEY) });
+
+      if (url.pathname === '/api/music/history' && request.method === 'GET') {
+        const listed = await env.MUSIC_BUCKET.list({ prefix: 'generated/', limit: 50 });
+        const items = listed.objects
+          .sort((a, b) => new Date(b.uploaded) - new Date(a.uploaded))
+          .map(object => ({
+            key: object.key,
+            id: object.key.replace(/^generated\//, '').replace(/\.mp3$/i, ''),
+            created: object.uploaded,
+            size: object.size,
+            url: `/music/${encodeURIComponent(object.key)}`
+          }));
+        return reply({ items });
+      }
 
       if (url.pathname === '/api/music/generate' && request.method === 'POST') {
         if (!env.ELEVENLABS_API_KEY) return reply({ error: 'AI engine bado haijaunganishwa.' }, 503);
