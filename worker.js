@@ -107,7 +107,10 @@ export default {
       const headers = new Headers(); object.writeHttpMetadata(headers); headers.set('etag', object.httpEtag);
       return new Response(object.body, { headers });
     }
-
+if (url.pathname === '/' || url.pathname === '/index.html') {
+  const newUrl = new URL('/nyg-fans.html', request.url);
+  return env.ASSETS.fetch(new Request(newUrl, request));
+}
     return env.ASSETS.fetch(request);
   }
 };
