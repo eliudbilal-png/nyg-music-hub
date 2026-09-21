@@ -232,12 +232,12 @@ toggle.addEventListener("click", function(e) {
   changeSection("faith", text.faith);
   changeSection("highlights", text.highlights);
   changeSection("promotion", text.promotion);
-document.getElementById("navHome").textContent = swahili ? "Home" : "Home";
+document.getElementById("navHome").textContent = swahili ? "Mwanzo" : "Home";
 document.getElementById("navMusic").textContent = swahili ? "Muziki" : "Music";
 document.getElementById("navFaith").textContent = swahili ? "Imani" : "Faith";
 document.getElementById("navHighlights").textContent = swahili ? "NYG Habari" : "NYG Highlights";
 document.getElementById("navPromotion").textContent = swahili ? "Matangazo" : "Promotion";
-  document.querySelector("#contact h2").textContent = text.contact;
+  document.getElementById("navContact").textContent = swahili ? "Mawasiliano" : "Contact";
   toggle.textContent = swahili ? "EN" : "SW";
 });
 </script>
