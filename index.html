@@ -197,7 +197,46 @@ footer{
   <strong>NYG FANS</strong>
   <p>Faith • Music • Inspiration • Promotion</p>
 </footer>
+<script>
+const toggle = document.getElementById("languageToggle");
+let swahili = false;
 
+toggle.addEventListener("click", function(e) {
+  e.preventDefault();
+  swahili = !swahili;
+
+  const text = swahili
+    ? {
+        music: ["Muziki", "Muziki wa NYG", "Gundua muziki wa injili, nyimbo mpya na maudhui ya muziki yenye kutia moyo."],
+        faith: ["Imani na Uhamasisho", "Neno la Uhamasisho", "Ujumbe wa imani, tumaini na kutia moyo."],
+        highlights: ["Matukio ya NYG", "Habari Mpya", "Endelea kupata habari, matukio, nyimbo mpya na taarifa kutoka NYG."],
+        promotion: ["Matangazo na Uhamasishaji", "Tangaza kupitia NYG FANS", "Tangaza muziki, biashara, tukio, bidhaa au huduma yako kupitia kwetu."],
+        contact: "Mawasiliano"
+      }
+    : {
+        music: ["Music", "NYG Music", "Discover gospel music, new releases and inspiring music content."],
+        faith: ["Faith & Inspiration", "Word of Inspiration", "Messages of faith, hope and encouragement."],
+        highlights: ["NYG Highlights", "Latest Highlights", "Stay connected with the latest news, events, music releases and updates from NYG."],
+        promotion: ["Promotion & Advertising", "Promote With NYG FANS", "Promote your music, business, event, product or service with us."],
+        contact: "Contact"
+      };
+
+  function changeSection(id, values) {
+    const section = document.getElementById(id);
+    section.querySelector("h2").textContent = values[0];
+    section.querySelector("h3").textContent = values[1];
+    section.querySelector("p").textContent = values[2];
+  }
+
+  changeSection("music", text.music);
+  changeSection("faith", text.faith);
+  changeSection("highlights", text.highlights);
+  changeSection("promotion", text.promotion);
+
+  document.querySelector("#contact h2").textContent = text.contact;
+  toggle.textContent = swahili ? "EN" : "SW";
+});
+</script>
 </body>
 </html>
   
