@@ -108,7 +108,8 @@ export default {
       return new Response(object.body, { headers });
     }
 if (url.pathname === '/') {
-  return Response.redirect(new URL('/nyg-fans.html', request.url).toString(), 302);
+  const newUrl = new URL('/nyg-fans.html', request.url);
+  return env.ASSETS.fetch(new Request(newUrl, request));
 }
     return env.ASSETS.fetch(request);
   }
