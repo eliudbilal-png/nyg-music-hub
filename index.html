@@ -363,6 +363,38 @@ dots.forEach((dot, index) => {
     showSlide(currentSlide);
   });
 });
+
+  const pageSections = document.querySelectorAll("body > section");
+const pageLinks = document.querySelectorAll(
+  'nav a[href^="#"]:not(#languageToggle), .slide[href^="#"]'
+);
+
+function openPage(pageId) {
+  if (pageId === "home") {
+    pageSections.forEach(section => section.style.display = "");
+  } else {
+    pageSections.forEach(section => {
+      section.style.display = section.id === pageId ? "block" : "none";
+    });
+  }
+
+  window.scrollTo(0, 0);
+}
+
+history.replaceState({ page: "home" }, "", location.pathname);
+
+pageLinks.forEach(link => {
+  link.addEventListener("click", function(event) {
+    event.preventDefault();
+    const pageId = this.getAttribute("href").substring(1);
+    history.pushState({ page: pageId }, "", "#" + pageId);
+    openPage(pageId);
+  });
+});
+
+window.addEventListener("popstate", function(event) {
+  openPage(event.state?.page || "home");
+});
 </script>
 </body>
 </html>
