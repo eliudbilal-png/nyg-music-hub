@@ -195,6 +195,7 @@ nav a{
 <a href="#promotion" id="navPromotion">Promotion</a>
 <a href="#contact" id="navContact">Contact</a>
 <a href="#" id="languageToggle">SW / EN</a>
+<a href="#" id="shareButton">Share</a>  
   </nav>
 </header>
 
@@ -385,9 +386,8 @@ dots.forEach((dot, index) => {
 
   const pageSections = document.querySelectorAll("body > section");
 const pageLinks = document.querySelectorAll(
-  'nav a[href^="#"]:not(#languageToggle), .slide[href^="#"]'
+  'nav a[href^="#"]:not(#languageToggle):not(#shareButton), .slide[href^="#"]'
 );
-
 function openPage(pageId) {
   if (pageId === "home") {
   pageSections.forEach(section => {
@@ -418,6 +418,27 @@ pageLinks.forEach(link => {
 
 window.addEventListener("popstate", function(event) {
   openPage(event.state?.page || "home");
+});
+const shareButton = document.getElementById("shareButton");
+
+shareButton.addEventListener("click", async function(event) {
+  event.preventDefault();
+
+  const shareData = {
+    title: "NYG FANS",
+    text: "Tembelea NYG FANS",
+    url: window.location.href
+  };
+
+  if (navigator.share) {
+    try {
+      await navigator.share(shareData);
+    } catch (error) {
+    }
+  } else {
+    await navigator.clipboard.writeText(window.location.href);
+    alert("Link imenakiliwa.");
+  }
 });
 </script>
 </body>
