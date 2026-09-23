@@ -239,7 +239,7 @@ nav a{
     >
   </a>
 
-  <p>Wimbo wa injili kutoka NYG WORSHIP.</p>
+<p id="tembeaText">Wimbo wa injili kutoka NYG WORSHIP.</p>
 
 <a href="https://youtu.be/aAxYDrwIdsw" target="_blank"
    style="color:#f4c542; font-weight:bold; text-decoration:underline;">
@@ -346,6 +346,7 @@ toggle.addEventListener("click", function(e) {
   changeSection("faith", text.faith);
   changeSection("highlights", text.highlights);
   changeSection("promotion", text.promotion);
+  document.getElementById("tembeaText").textContent = swahili ? "Wimbo wa injili kutoka NYG WORSHIP." : "Gospel song by NYG WORSHIP.";
 document.getElementById("navHome").textContent = swahili ? "Mwanzo" : "Home";
 document.getElementById("navMusic").textContent = swahili ? "Muziki" : "Music";
 document.getElementById("navFaith").textContent = swahili ? "Imani" : "Faith";
