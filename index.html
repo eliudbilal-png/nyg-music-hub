@@ -141,6 +141,47 @@ nav a{
   font-size:14px;
 }
 }
+  .slider{
+  position:relative;
+  width:100%;
+  overflow:hidden;
+  background:#07111f;
+}
+
+.slide{
+  display:none;
+  width:100%;
+}
+
+.slide.active{
+  display:block;
+}
+
+.slide img{
+  display:block;
+  width:100%;
+  height:auto;
+}
+
+.slider-dots{
+  position:absolute;
+  bottom:12px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:8px;
+}
+
+.dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:#ffffff88;
+}
+
+.dot.active{
+  background:#f4c542;
+}
 </style>
 </head>
 <body>
@@ -157,12 +198,26 @@ nav a{
   </nav>
 </header>
 
-<section class="hero" id="home">
-  <div class="hero-content">
-    <h1>NYG FANS</h1>
-<p id="heroText">Faith • Music • Inspiration • Promotion</p>
-  
+<section id="home" class="slider">
+
+  <a href="#promotion" class="slide active">
+    <img src="nyg-group-banner.png" alt="NYG GROUP SONGEA">
+  </a>
+
+  <a href="#music" class="slide">
+    <img src="nyg-worship-banner.png" alt="NYG WORSHIP LABEL">
+  </a>
+
+  <a href="#faith" class="slide">
+    <img src="nyg-church-banner.png" alt="NYG CHURCH MINISTRY">
+  </a>
+
+  <div class="slider-dots">
+    <span class="dot active"></span>
+    <span class="dot"></span>
+    <span class="dot"></span>
   </div>
+
 </section>
 
 <section id="music">
@@ -285,6 +340,29 @@ document.getElementById("navPromotion").textContent = swahili ? "Matangazo" : "P
   toggle.textContent = swahili ? "EN" : "SW";
 });
   toggle.click();
+  const slides = document.querySelectorAll(".slide");
+const dots = document.querySelectorAll(".dot");
+let currentSlide = 0;
+
+function showSlide(index) {
+  slides.forEach(slide => slide.classList.remove("active"));
+  dots.forEach(dot => dot.classList.remove("active"));
+
+  slides[index].classList.add("active");
+  dots[index].classList.add("active");
+}
+
+setInterval(() => {
+  currentSlide = (currentSlide + 1) % slides.length;
+  showSlide(currentSlide);
+}, 5000);
+
+dots.forEach((dot, index) => {
+  dot.addEventListener("click", () => {
+    currentSlide = index;
+    showSlide(currentSlide);
+  });
+});
 </script>
 </body>
 </html>
