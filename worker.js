@@ -132,6 +132,7 @@ if (url.pathname === "/pay") {
         },
         body: JSON.stringify({
           totalPrice: "1000",
+          orderCurrency: "TZS",
           orderReference: orderReference,
           description: "I'm Still Going On - NYG Music"
         })
