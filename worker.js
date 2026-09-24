@@ -98,7 +98,37 @@ export default {
       }
       return reply({ error: 'API route haijapatikana.' }, 404);
     }
+if (url.pathname === "/pay") {
+  try {
+    const tokenRes = await fetch(
+      "https://api.clickpesa.com/third-parties/generate-token",
+      {
+        method: "POST",
+        headers: {
+          "client-id": env.CLICKPESA_CLIENT_ID,
+          "api-key": env.CLICKPESA_API_KEY
+        }
+      }
+    );
 
+    const tokenData = await tokenRes.json();
+
+    if (!tokenRes.ok) {
+      return new Response(JSON.stringify(tokenData), {
+        status: tokenRes.status,
+        headers: { "content-type": "application/json" }
+      });
+    }
+
+    return new Response(JSON.stringify(tokenData), {
+      headers: { "content-type": "application/json" }
+    });
+  } catch (error) {
+    return new Response("ClickPesa error: " + error.message, {
+      status: 500
+    });
+  }
+}
     if (url.pathname.startsWith('/music/')) {
       if (!await sessionValid(request, env)) return new Response('Unauthorized', { status: 401 });
       const key = decodeURIComponent(url.pathname.slice(7));
