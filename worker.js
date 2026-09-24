@@ -29,7 +29,39 @@ const reply = (data, status = 200, headers = {}) => new Response(JSON.stringify(
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === "/api/clickpesa/status") {
+      return reply({
+        connected: Boolean(
+          env.CLICKPESA_CLIENT_ID &&
+          env.CLICKPESA_API_KEY
+        )
+      });
+    }
 
+    if (url.pathname === "/api/clickpesa/test") {
+      try {
+        const response = await fetch(
+          "https://api.clickpesa.com/third-parties/generate-token",
+          {
+            method: "POST",
+            headers: {
+              "api-key": env.CLICKPESA_API_KEY,
+              "client-id": env.CLICKPESA_CLIENT_ID
+            }
+          }
+        );
+
+        return reply({
+          authenticated: response.ok,
+          status: response.status
+        });
+      } catch (error) {
+        return reply({
+          authenticated: false,
+          error: "ClickPesa haijafikiwa"
+        }, 502);
+      }
+    }
     if (url.pathname === '/api/admin/login' && request.method === 'POST') {
       if (!env.ADMIN_ACCESS_CODE || !env.ADMIN_SESSION_SECRET) return reply({ error: 'Admin login bado haijawekwa kwenye server.' }, 503);
       const body = await request.json().catch(() => ({}));
