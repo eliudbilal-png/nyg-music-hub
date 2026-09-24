@@ -113,16 +113,42 @@ if (url.pathname === "/pay") {
 
     const tokenData = await tokenRes.json();
 
-    if (!tokenRes.ok) {
+    if (!tokenRes.ok || !tokenData.token) {
       return new Response(JSON.stringify(tokenData), {
         status: tokenRes.status,
         headers: { "content-type": "application/json" }
       });
     }
 
-    return new Response(JSON.stringify(tokenData), {
-      headers: { "content-type": "application/json" }
-    });
+    const orderReference = "NYG-" + Date.now();
+
+    const checkoutRes = await fetch(
+      "https://api.clickpesa.com/third-parties/checkout-link/generate-checkout-url",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": tokenData.token,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          totalPrice: "1000",
+          orderReference: orderReference,
+          description: "I'm Still Going On - NYG Music"
+        })
+      }
+    );
+
+    const checkoutData = await checkoutRes.json();
+
+    if (!checkoutRes.ok || !checkoutData.checkoutLink) {
+      return new Response(JSON.stringify(checkoutData), {
+        status: checkoutRes.status,
+        headers: { "content-type": "application/json" }
+      });
+    }
+
+    return Response.redirect(checkoutData.checkoutLink, 302);
+
   } catch (error) {
     return new Response("ClickPesa error: " + error.message, {
       status: 500
