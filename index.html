@@ -140,11 +140,21 @@ footer{
   }
   nav{
   gap:8px;
-  justify-content:center;
+  
+  
+  justify-content:space-between;
+}
 }
 
 nav a{
   font-size:14px;
+}
+  .lang-btn{
+  margin-right:auto;
+}
+
+.share-btn{
+  margin-left:auto;
 }
 }
   .slider{
@@ -248,8 +258,8 @@ nav a{
 <a href="#highlights" id="navHighlights">NYG Highlights</a>
 <a href="#promotion" id="navPromotion">Promotion</a>
 <a href="#contact" id="navContact">Contact</a>
-<a href="#" id="languageToggle">SW / EN</a>
-<a href="#" id="shareButton">Share</a>  
+<a href="#" id="languageToggle" class="lang-btn">SW / EN</a>
+<a href="#" id="shareButton" class="share-btn">Share</a>
   </nav>
 </header>
 
@@ -416,7 +426,7 @@ toggle.addEventListener("click", function(e) {
     section.querySelector("p").innerHTML = values[2];
   }
 
-  changeSection("music", text.music);
+  document.getElementById("musicTitle").textContent = swahili ? "Muziki" : "Music";
   changeSection("faith", text.faith);
   changeSection("highlights", text.highlights);
   changeSection("promotion", text.promotion);
