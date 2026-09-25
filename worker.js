@@ -132,6 +132,7 @@ if (url.pathname === "/pay") {
         },
         body: JSON.stringify({
   totalPrice: "1000",
+          orderCurrency: "TZS",
   orderReference: orderReference,
   customerName: "NYG Music Customer",
   customerEmail: "nygcenter1@gmail.com",
