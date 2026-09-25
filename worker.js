@@ -131,11 +131,15 @@ if (url.pathname === "/pay") {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          totalPrice: "1000",
-          orderCurrency: "TZS",
-          orderReference: orderReference,
-          description: "I'm Still Going On - NYG Music"
-        })
+  totalPrice: "1000",
+  orderReference: orderReference,
+  customerName: "NYG Music Customer",
+  customerEmail: "nygcenter1@gmail.com",
+  customerPhone: "255755498731",
+  description: "I'm Still Going On - NYG Music",
+  callbackUrl: "https://nygmusichub.com/",
+  wooCommerceCallbackURL: ""
+})
       }
     );
 
