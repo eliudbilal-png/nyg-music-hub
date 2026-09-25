@@ -140,7 +140,7 @@ export default {
       return new Response(object.body, { headers });
     }
 if (url.pathname === '/') {
-  const newUrl = new URL('/nyg-fans.html', request.url);
+  const newUrl = new URL('/index.html', request.url);
   return env.ASSETS.fetch(new Request(newUrl, request));
 }
     return env.ASSETS.fetch(request);
