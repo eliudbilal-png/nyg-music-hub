@@ -505,7 +505,7 @@ function openPage(pageId) {
     });
   }
 
-  window.scrollTo(0, 0);
+setTimeout(() => window.scrollTo(0, 0), 100);
 }
 
 const initialPage = location.hash.substring(1) || "home";
