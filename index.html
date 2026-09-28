@@ -435,6 +435,12 @@ toggle.addEventListener("click", function(e) {
   e.preventDefault();
   swahili = !swahili;
   toggle.textContent = swahili ? "EN" : "SW";
+document.getElementById("navHome").textContent = swahili ? "Mwanzo" : "Home";
+document.getElementById("navMusic").textContent = swahili ? "Muziki" : "Music";
+document.getElementById("navFaith").textContent = swahili ? "Imani" : "Faith";
+document.getElementById("navHighlights").textContent = swahili ? "NYG Habari" : "NYG Highlights";
+document.getElementById("navPromotion").textContent = swahili ? "Matangazo" : "Promotion";
+document.getElementById("navContact").textContent = swahili ? "Mawasiliano" : "Contact";
   const text = swahili
     ? {
         music: ["Muziki", "SEMA NENO", "Wimbo mpya wa NYG WORSHIP. Bonyeza hapa chini kutazama."],
