@@ -275,7 +275,8 @@ nav a{
 <a href="#highlights" id="navHighlights">NYG Highlights</a>
 <a href="#promotion" id="navPromotion">Promotion</a>
 <a href="#contact" id="navContact">Contact</a>
-<a href="#" id="languageToggle" class="lang-btn">SW</a>
+<a href="#" id="swBtn" class="lang-btn">SW</a>
+<a href="#" id="enBtn" class="lang-btn">EN</a>
 <a href="#" id="shareButton" class="share-btn">Share</a>
   </nav>
 </header>
@@ -428,13 +429,12 @@ nav a{
 <p id="footerText">Faith • Music • Inspiration • Promotion</p>
 </footer>
 <script>
-const toggle = document.getElementById("languageToggle");
+const swBtn = document.getElementById("swBtn");
+const enBtn = document.getElementById("enBtn");
 let swahili = false;
 
-toggle.addEventListener("click", function(e) {
-  e.preventDefault();
-  swahili = !swahili;
-
+function setLanguage(useSwahili) {
+  swahili = useSwahili;
   const text = swahili
     ? {
         music: ["Muziki", "SEMA NENO", "Wimbo mpya wa NYG WORSHIP. Bonyeza hapa chini kutazama."],
@@ -475,8 +475,11 @@ document.getElementById("navPromotion").textContent = swahili ? "Matangazo" : "P
   document.getElementById("contactTitle").textContent = text.contact;
   document.getElementById("contactText").innerHTML = swahili ? '<a href="https://wa.me/255755498731">WhatsApp: +255 755 498 731</a><br>Email: <a href="mailto:info@nygmusichub.com">info@nygmusichub.com</a>' : '<a href="https://wa.me/255755498731">WhatsApp: +255 755 498 731</a><br>Email: <a href="mailto:info@nygmusichub.com">info@nygmusichub.com</a>';
   document.getElementById("footerText").textContent = text.hero;
-toggle.textContent = swahili ? "SW" : "EN";
-});
+}
+
+
+swBtn.addEventListener("click", (e) => { e.preventDefault(); setLanguage(true); });
+enBtn.addEventListener("click", (e) => { e.preventDefault(); setLanguage(false); });
   
   const slides = document.querySelectorAll(".slide");
 const dots = document.querySelectorAll(".dot");
