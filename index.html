@@ -434,6 +434,7 @@ let swahili = false;
 toggle.addEventListener("click", function(e) {
   e.preventDefault();
   swahili = !swahili;
+  toggle.textContent = swahili ? "EN" : "SW";
   const text = swahili
     ? {
         music: ["Muziki", "SEMA NENO", "Wimbo mpya wa NYG WORSHIP. Bonyeza hapa chini kutazama."],
@@ -474,7 +475,7 @@ document.getElementById("navPromotion").textContent = swahili ? "Matangazo" : "P
   document.getElementById("contactTitle").textContent = text.contact;
   document.getElementById("contactText").innerHTML = swahili ? '<a href="https://wa.me/255755498731">WhatsApp: +255 755 498 731</a><br>Email: <a href="mailto:info@nygmusichub.com">info@nygmusichub.com</a>' : '<a href="https://wa.me/255755498731">WhatsApp: +255 755 498 731</a><br>Email: <a href="mailto:info@nygmusichub.com">info@nygmusichub.com</a>';
   document.getElementById("footerText").textContent = text.hero;
-toggle.textContent = swahili ? "EN" : "SW";
+
 });
   
   const slides = document.querySelectorAll(".slide");
