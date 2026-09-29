@@ -656,25 +656,18 @@ const pageLinks = document.querySelectorAll(
   'nav a[href^="#"]:not(#languageToggle):not(#shareButton), .slide[href^="#"]'
 );
 function openPage(pageId) {
-  const homeAboutBox = document.getElementById("home-about-box");
-if (homeAboutBox) {
-  homeAboutBox.style.display = pageId === "home" ? "block" : "none";
-}
-  if (pageId === "home") {
   pageSections.forEach(section => {
-    section.style.display =
-      section.id === "home" || section.id === "contact" ? "" : "none";
+    if (pageId === "home") {
+      section.style.display =
+        (section.id === "home" || section.id === "contact") ? "" : "none";
+    } else {
+      section.style.display =
+        section.id === pageId ? "" : "none";
+    }
   });
-    
-  } else {
-    pageSections.forEach(section => {
-      section.style.display = section.id === pageId ? "block" : "none";
-    });
-  }
 
-setTimeout(() => window.scrollTo(0, 0), 100);
+  setTimeout(() => window.scrollTo(0, 0), 100);
 }
-
 const initialPage = location.hash.substring(1) || "home";
 history.replaceState({ page: initialPage }, "", "#" + initialPage);
 openPage(initialPage);
