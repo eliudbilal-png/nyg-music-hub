@@ -659,12 +659,18 @@ function openPage(pageId) {
   pageSections.forEach(section => {
     if (pageId === "home") {
       section.style.display =
-        (section.id === "home" || section.id === "contact") ? "" : "none";
+        section.id === "home" ? "" : "none";
     } else {
       section.style.display =
         section.id === pageId ? "" : "none";
     }
   });
+
+  const homeAboutBox = document.getElementById("home-about-box");
+  if (homeAboutBox) {
+    homeAboutBox.style.display =
+      pageId === "home" ? "" : "none";
+  }
 
   setTimeout(() => window.scrollTo(0, 0), 100);
 }
