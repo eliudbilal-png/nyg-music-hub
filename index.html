@@ -656,6 +656,10 @@ const pageLinks = document.querySelectorAll(
   'nav a[href^="#"]:not(#languageToggle):not(#shareButton), .slide[href^="#"]'
 );
 function openPage(pageId) {
+  const homeAboutBox = document.getElementById("home-about-box");
+if (homeAboutBox) {
+  homeAboutBox.style.display = pageId === "home" ? "block" : "none";
+}
   if (pageId === "home") {
   pageSections.forEach(section => {
     section.style.display =
