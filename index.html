@@ -427,9 +427,9 @@ nav a{
     Listen
   </a>
 </div>
-    <div class="nyg-top5" style="margin-top:20px;">
+<div id="nyg-top5" class="nyg-top5" style="margin-top:20px;">
   <h3 style="color:#f4c542; margin-bottom:10px;">NYG TOP 5</h3>
-
+<a href="#" class="segment-share" data-share="nyg-top5" style="color:#5dade2; font-size:12px;">Share</a>
   <p style="font-size:12px; margin:5px 0;">
     <strong>1. SEMA NENO — NYG WORSHIP</strong>
     <a href="https://youtu.be/-lkZ63H_pqs?si=z6nhSOujhlVGDCNk"
@@ -665,6 +665,33 @@ shareButton.addEventListener("click", async function(event) {
     await navigator.clipboard.writeText(window.location.href);
     alert("Link imenakiliwa.");
   }
+});
+  document.querySelectorAll(".segment-share").forEach(button => {
+  button.addEventListener("click", async function(event) {
+    event.preventDefault();
+
+    const segmentId = this.dataset.share;
+    const shareUrl =
+      window.location.origin +
+      window.location.pathname +
+      "?segment=" + segmentId + "#" + segmentId;
+
+    const segmentShareData = {
+      title: "NYG TOP 5",
+      text: "NYG TOP 5 — NYG MUSIC HUB",
+      url: shareUrl
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(segmentShareData);
+      } catch (error) {
+      }
+    } else {
+      await navigator.clipboard.writeText(shareUrl);
+      alert("Link ya NYG TOP 5 imenakiliwa.");
+    }
+  });
 });
 </script>
 </body>
