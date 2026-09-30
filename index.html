@@ -659,8 +659,14 @@ function openPage(pageId) {
         section.id === "light-of-the-world" ||
         section.id === "contact" ? "" : "none";
     });
+  } else {
+    pageSections.forEach(section => {
+      section.style.display = section.id === pageId ? "block" : "none";
+    });
+  }
 
-    setTimeout(() => window.scrollTo(0, 0), 100);
+  setTimeout(() => window.scrollTo(0, 0), 100);
+}
 
   } else {
     pageSections.forEach(section => {
