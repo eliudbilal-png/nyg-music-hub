@@ -639,8 +639,8 @@ document.getElementById("navContact").textContent = swahili ? "Mawasiliano" : "C
   }
 
   document.getElementById("musicTitle").textContent = swahili ? "Muziki" : "Music";
-  document.querySelector(".lang-sw").style.display = swahili ? "block" : "none";
-document.querySelector(".lang-en").style.display = swahili ? "none" : "block";
+document.querySelectorAll(".lang-sw").forEach(el => el.style.display = swahili ? "block" : "none");
+document.querySelectorAll(".lang-en").forEach(el => el.style.display = swahili ? "none" : "block");
   changeSection("faith", text.faith);
   changeSection("highlights", text.highlights);
   changeSection("promotion", text.promotion);
