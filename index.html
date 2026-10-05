@@ -642,8 +642,18 @@ document.getElementById("navFaith").textContent = swahili ? "Imani" : "Faith";
 document.getElementById("navHighlights").textContent = swahili ? "Matukio ya NYG" : "NYG Highlights";
 document.getElementById("navPromotion").textContent = swahili ? "Matangazo" : "Promotion";
 document.getElementById("navContact").textContent = swahili ? "Mawasiliano" : "Contact";
-  const text = swahili
-    ? {
+  const faithPoster = document.getElementById("faithPoster");
+
+faithPoster.src = swahili
+  ? "poster ya OCTOBA 2026 – MWEZI WA KITUME.png"
+  : "OCTOBER POSTER 2026 – APOSTOLIC MONTH.png";
+
+faithPoster.alt = swahili
+  ? "Neno la Mwezi - Octoba 2026"
+  : "Word of the Month - October 2026";
+
+const text = swahili
+  ? {
         music: ["Muziki", "SEMA NENO", "Wimbo mpya wa NYG WORSHIP. Bonyeza hapa chini kutazama."],
            faith: ["Imani na Uhamasisho", "UZAO ULIOBARIKIWA", "<strong>NENO LA MWEZI — Matendo ya Mitume 3:25</strong><br>Ninyi mmekuwa watoto wa manabii na wa maagano yale, ambayo Mungu aliagana na baba zenu, akimwambia Ibrahimu, Katika uzao wako kabila zote za ulimwengu zitabarikiwa.<br><br><strong>UJUMBE MFUPI</strong><br>Umeitwa kuwa sehemu ya uzao uliobarikiwa. Kupitia maisha yako, Mungu anaweza kuwafikia na kuwabariki wengine."],
         highlights: ["Matukio ya NYG", "AZZO DREY KUACHIA WIMBO MPYA “MAOMBI” JUMAPILI", `Mwimbaji mpya wa NYG WORSHIP LABEL anayejulikana kama Azzo Drey anatarajia kuachia wimbo wake mpya unaoitwa “MAOMBI” Jumapili, tarehe 27 Septemba 2026.<br><br>Wimbo huo umerekodiwa katika MeFo Studio jijini Mbeya, akimshirikisha producer na mwimbaji NuelHenry, maarufu kama Kingson.<br><br>Azzo Drey amesema kuwa uimbaji wake umebadilika sana na anaamini hatua nyingine kubwa katika safari yake ya muziki inaanza sasa.<br><br>Meneja wa NYG WORSHIP, Afande Bright, amethibitisha ujio wa wimbo huo na kusema kuwa unatarajiwa kuleta mapinduzi makubwa katika tasnia ya muziki wa Injili kwa vijana nchini Tanzania.<br><br>Aidha, Mkurugenzi Mkuu wa NYG WORSHIP LABEL, Amb. Apostle Eliud Bilali, amempongeza Azzo Drey na kumtakia mafanikio mema katika safari yake ya muziki. Pia amewataka wanafamilia wote wa NYG kujisajili kwenye chaneli ya YouTube ya NYG WORSHIP LABEL ili wasipitwe na matukio muhimu ya kimuziki.`],
