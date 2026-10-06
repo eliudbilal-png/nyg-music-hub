@@ -322,46 +322,6 @@ nav a{
 .top-header .language-toggle{
   justify-self:end;
 }
-  /* CHAT + ABOUT/EP DESKTOP LAYOUT */
-.nyg-info-grid {
-  display: grid;
-  grid-template-columns: 70% 30%;
-  gap: 15px;
-  align-items: stretch;
-}
-
-.nyg-chat-column {
-  min-width: 0;
-}
-
-.nyg-side-column {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.nyg-side-column #about-summary,
-.nyg-side-column #light-of-the-world {
-  flex: 1;
-  overflow: auto;
-}
-
-/* MOBILE */
-@media (max-width: 768px) {
-  .nyg-info-grid {
-    display: block;
-  }
-
-  .nyg-chat-column,
-  .nyg-side-column {
-    width: 100%;
-  }
-
-  .nyg-side-column #about-summary,
-  .nyg-side-column #light-of-the-world {
-    overflow: visible;
-  }
-}
 </style>
 </head>
 <body>
@@ -426,9 +386,6 @@ nav a{
 </iframe>
 </section>
 <!-- END NYG STREAM LIVE PLAYER -->
-  <div class="nyg-info-grid">
-
-  <div class="nyg-chat-column">
   <section id="nyg-chat" style="text-align:center; padding:10px 12px;">
   <h2 style="margin:0 0 8px 0; font-size:20px;">💬 NYG LIVE CHAT & SONG REQUEST</h2>
 
@@ -443,9 +400,6 @@ nav a{
     scrolling="auto">
   </iframe>
 </section>
-      </div>
-
-  <div class="nyg-side-column">
 <section id="about-summary">
 
   <div class="lang-en">
@@ -575,9 +529,6 @@ nav a{
 </button>
   </div>
 </section>
-      </div>
-
-</div>
   <!-- NEW SONG -->
 <section id="new-song" style="scroll-margin-top:400px;">
   <h2>NEW SONG</h2>
@@ -918,34 +869,20 @@ dots.forEach((dot, index) => {
 const pageLinks = document.querySelectorAll(
   'nav a[href^="#"]:not(#languageToggle):not(#shareButton), .slide[href^="#"]'
 );
-
 function openPage(pageId) {
-
-  // Ficha/onyesha HOME GRID yetu mpya
-  const infoGrid = document.querySelector(".nyg-info-grid");
-
   if (pageId === "home") {
-    pageSections.forEach(section => {
-      section.style.display =
-        section.id === "home" ||
-        section.id === "nyg-live" ||
-        section.id === "contact"
-          ? ""
-          : "none";
-    });
-
-    if (infoGrid) infoGrid.style.display = "grid";
-
+  pageSections.forEach(section => {
+    section.style.display =
+      section.id === "home" || section.id === "nyg-live"  || section.id === "nyg-chat" || section.id === "about-summary" || section.id === "light-of-the-world" || section.id === "contact" ? "" : "none";
+  });
+    
   } else {
     pageSections.forEach(section => {
-      section.style.display =
-        section.id === pageId ? "block" : "none";
+      section.style.display = section.id === pageId ? "block" : "none";
     });
-
-    if (infoGrid) infoGrid.style.display = "none";
   }
 
-  setTimeout(() => window.scrollTo(0, 0), 100);
+setTimeout(() => window.scrollTo(0, 0), 100);
 }
 
 const sharedSegment = new URLSearchParams(location.search).get("segment");
