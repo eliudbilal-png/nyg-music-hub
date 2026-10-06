@@ -918,20 +918,34 @@ dots.forEach((dot, index) => {
 const pageLinks = document.querySelectorAll(
   'nav a[href^="#"]:not(#languageToggle):not(#shareButton), .slide[href^="#"]'
 );
+
 function openPage(pageId) {
+
+  // Ficha/onyesha HOME GRID yetu mpya
+  const infoGrid = document.querySelector(".nyg-info-grid");
+
   if (pageId === "home") {
-  pageSections.forEach(section => {
-    section.style.display =
-      section.id === "home" || section.id === "nyg-live"  || section.id === "nyg-chat" || section.id === "about-summary" || section.id === "light-of-the-world" || section.id === "contact" ? "" : "none";
-  });
-    
+    pageSections.forEach(section => {
+      section.style.display =
+        section.id === "home" ||
+        section.id === "nyg-live" ||
+        section.id === "contact"
+          ? ""
+          : "none";
+    });
+
+    if (infoGrid) infoGrid.style.display = "grid";
+
   } else {
     pageSections.forEach(section => {
-      section.style.display = section.id === pageId ? "block" : "none";
+      section.style.display =
+        section.id === pageId ? "block" : "none";
     });
+
+    if (infoGrid) infoGrid.style.display = "none";
   }
 
-setTimeout(() => window.scrollTo(0, 0), 100);
+  setTimeout(() => window.scrollTo(0, 0), 100);
 }
 
 const sharedSegment = new URLSearchParams(location.search).get("segment");
