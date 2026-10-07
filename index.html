@@ -824,7 +824,9 @@ document.querySelectorAll(".lang-sw").forEach(el => el.style.display = swahili ?
 document.querySelectorAll(".lang-en").forEach(el => el.style.display = swahili ? "none" : "block");
   changeSection("faith", text.faith);
   changeSection("highlights", text.highlights);
-  changeSection("promotion", text.promotion);
+  document.getElementById("promotionTitle").textContent = text.promotion[0];
+document.getElementById("promotionCardTitle").textContent = text.promotion[1];
+document.getElementById("promotionText").innerHTML = text.promotion[2];
   document.getElementById("tembeaText").textContent = swahili ? "Wimbo wa injili kutoka NYG WORSHIP." : "Gospel song by NYG WORSHIP.";
 document.getElementById("navHome").textContent = swahili ? "Mwanzo" : "Home";
 document.getElementById("navMusic").textContent = swahili ? "Muziki" : "Music";
