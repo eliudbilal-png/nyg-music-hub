@@ -755,53 +755,6 @@ nav a{
 <p id="footerText">Faith • Music • Inspiration • Promotion</p>
 </footer>
 <script>
-const toggle = document.getElementById("languageToggle");
-let swahili = false;
-
-toggle.addEventListener("click", function(e) {
-  e.preventDefault();
-  swahili = !swahili;
-  toggle.textContent = swahili ? "EN" : "SW";
-document.getElementById("navHome").textContent = swahili ? "Mwanzo" : "Home";
-document.getElementById("navMusic").textContent = swahili ? "Muziki" : "Music";
-  document.getElementById("navNewSong").textContent = swahili ? "WIMBO MPYA" : "NEW SONG";
-  document.getElementById("navAbout").textContent = swahili ? "Kuhusu Sisi" : "About Us";
-document.getElementById("navFaith").textContent = swahili ? "Imani" : "Faith";
-document.getElementById("navHighlights").textContent = swahili ? "Matukio ya NYG" : "NYG Highlights";
-document.getElementById("navPromotion").textContent = swahili ? "Matangazo" : "Promotion";
-document.getElementById("navContact").textContent = swahili ? "Mawasiliano" : "Contact";
-  const faithPoster = document.getElementById("faithPoster");
-
-faithPoster.src = swahili
-  ? "poster ya OCTOBA 2026 – MWEZI WA KITUME.png"
-  : "OCTOBER POSTER 2026 – APOSTOLIC MONTH.png";
-
-faithPoster.alt = swahili
-  ? "Neno la Mwezi - Octoba 2026"
-  : "Word of the Month - October 2026";
-
-const text = swahili
-  ? {
-        music: ["Muziki", "SEMA NENO", "Wimbo mpya wa NYG WORSHIP. Bonyeza hapa chini kutazama."],
-           faith: ["Imani na Uhamasisho", "UZAO ULIOBARIKIWA", "<strong>NENO LA MWEZI — Matendo ya Mitume 3:25</strong><br>Ninyi mmekuwa watoto wa manabii na wa maagano yale, ambayo Mungu aliagana na baba zenu, akimwambia Ibrahimu, Katika uzao wako kabila zote za ulimwengu zitabarikiwa.<br><br><strong>UJUMBE MFUPI</strong><br>Umeitwa kuwa sehemu ya uzao uliobarikiwa. Kupitia maisha yako, Mungu anaweza kuwafikia na kuwabariki wengine."],
-highlights: [
-  "Matukio ya NYG",
-  "MTUME BILALI ATANGAZA MWEZI WA KITUME",
-  `Mtumishi wa Mungu na Kiongozi Mkuu wa Huduma ya Nuru Yang’aa Gizani – <strong>NYG GRACELAND CENTER</strong>, Msamala, Songea, Tanzania, Balozi <strong>Apostle Bilali</strong>, ametangaza rasmi <strong>Oktoba 2026 kuwa Mwezi wa Kitume.</strong> Kilele chake kitakuwa tarehe <strong>25/10/2026</strong>, ambapo Ibada Kuu ya <strong>APOSTOLIC DAY</strong> itafanyika.<br><br>Katika kikao chake na watenda kazi Jumamosi hii, Apostle Bilali amethibitisha kuwa mwezi huu utakuwa na misheni mbalimbali, zikiwemo <strong>kuwatembelea wafungwa na kuwapatia mahitaji muhimu, kuhubiri Injili mitaani na kufanya semina.</strong><br><br>Mwezi wa Kitume utahitimishwa kwa Ibada Kuu pamoja na <strong>Tamasha la Sifa tarehe 25/10/2026.</strong> Waimbaji kutoka <strong>NYG WORSHIP</strong> watashiriki na kulipamba tamasha hilo.<br><br>Apostle Bilali ametoa mwongozo wa namna ya kuenenda katika Mwezi huu wa Kitume na amewakaribisha watu wote kushiriki matukio mbalimbali yatakayofanyika katika mwezi huu.`
-],
-        promotion: ["Matangazo na Uhamasishaji", "VITABU 5 VYA KUJENGA UCHUMI WAKO", `Jipatie maarifa yatakayokusaidia kubadili mtazamo, kutambua fursa na kuinuka kiuchumi.<br><br><strong>Bei ya kila kitabu: Tsh 5,000</strong><br><br>Lipa kupitia M-Pesa: <strong>0755 498 731</strong><br>Jina: <strong>ELIUD DAVIES BILAL</strong><br><br>Baada ya malipo, wasiliana nasi kupitia WhatsApp: <a href="https://wa.me/255755498731?text=Nahitaji%20kununua%20kitabu" target="_blank" style="color:#25D366; font-weight:bold;">0755 498 731</a>.`],
-        contact:"Mawasiliano",
-      hero: "Imani • Muziki • Uhamasisho • Matangazo"
-      }
-    : {
-        music: ["Music", "SEMA NENO", "New song by NYG WORSHIP. Click below to watch."],
-             faith: ["Faith & Inspiration", "BLESSED OFFSPRING", "<strong>WORD OF THE MONTH — ACTS 3:25</strong><br>Ye are the children of the prophets, and of the covenant which God made with our fathers, saying unto Abraham, And in thy seed shall all the kindreds of the earth be blessed.<br><br><strong>SHORT MESSAGE</strong><br>You are called to be part of a blessed generation. Through your life, God can reach and bless others."],
-highlights: [
-  "NYG Highlights",
-  "APOSTLE BILALI DECLARES APOSTOLIC MONTH",
-  `Ambassador Apostle Bilali, servant of God and Senior Leader of Nuru Yang’aa Gizani – <strong>NYG GRACELAND CENTER</strong>, based in Msamala, Songea, Tanzania, has officially launched <strong>Apostolic Month.</strong> The month will culminate on <strong>25 October 2026</strong>, with a special <strong>APOSTOLIC DAY</strong> service.<br><br>
-
-  During his meeting with ministry workers this Saturday, Apostle Bilali confirmed that various missions will take place throughout Apostolic Month. These will include <strong>visiting prisoners and providing them with essential needs, street evangelism, and 
   const slides = document.querySelectorAll(".slide");
 const dots = document.querySelectorAll(".dot");
 let currentSlide = 0;
