@@ -141,7 +141,65 @@ export default {
     }
 if (url.pathname === '/') {
   const newUrl = new URL('/index.html', request.url);
-  return env.ASSETS.fetch(new Request(newUrl, request));
+  const assetResponse = await env.ASSETS.fetch(
+    new Request(newUrl, request)
+  );
+
+  const videos = {
+    "EwOFoJZerDs": "MAOMBI - AZZO DREY",
+    "-lkZ63H_pqs": "SEMA NENO - NYG WORSHIP",
+    "aAxYDrwIdsw": "TEMBEA NA YESU - NYG WORSHIP",
+    "8Ov3e5pqBiE": "TWENDE - NUEL HENRY",
+    "_pbNPbDjArw": "JIRANI - AFANDE BRIGHT"
+  };
+
+  const videoId = url.searchParams.get('video');
+
+  if (!videoId || !Object.prototype.hasOwnProperty.call(videos, videoId)) {
+    return assetResponse;
+  }
+
+  if (!assetResponse.ok) return assetResponse;
+
+  const title = videos[videoId];
+  const imageUrl =
+    `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  const shareUrl =
+    `https://nygmusichub.com/?video=${encodeURIComponent(videoId)}`;
+
+  const escapeHtml = (value) => String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  const tags = {
+    'og:title': title + ' | NYG VIDEO HUB',
+    'og:description': 'Tazama ' + title + ' kupitia NYG VIDEO HUB.',
+    'og:image': imageUrl,
+    'og:url': shareUrl,
+    'og:type': 'video.other'
+  };
+
+  const rewriter = new HTMLRewriter();
+
+  for (const [property, content] of Object.entries(tags)) {
+    rewriter.on(`meta[property="${property}"]`, {
+      element(element) {
+        element.setAttribute('content', content);
+      }
+    });
+  }
+
+  const response = rewriter.transform(assetResponse);
+  const headers = new Headers(response.headers);
+  headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
 }
     return env.ASSETS.fetch(request);
   }
