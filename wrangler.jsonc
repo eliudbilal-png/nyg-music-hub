@@ -11,5 +11,12 @@
       "binding": "MUSIC_BUCKET",
       "bucket_name": "nyg-music-store"
     }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nyg-video-hub-db",
+      "database_id": "223d0a74-8b69-4614-99ed-a22a18982854"
+    }
   ]
 }
