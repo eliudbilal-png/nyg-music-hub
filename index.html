@@ -1110,10 +1110,17 @@ window.addEventListener("load", function () {
   };
 
   if (videoId && Object.prototype.hasOwnProperty.call(videos, videoId)) {
-    openNYGVideo(videoId, videos[videoId]);
-    const videoSection = document.getElementById("new-song");
-if (videoSection) videoSection.scrollIntoView({ behavior: "instant", block: "start" });
+  const videoSection = document.getElementById("new-song");
+
+  if (videoSection) {
+    videoSection.scrollIntoView({
+      behavior: "auto",
+      block: "start"
+    });
   }
+
+  openNYGVideo(videoId, videos[videoId]);
+}
 });
 </script>
 </body>
