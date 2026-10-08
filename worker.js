@@ -163,7 +163,7 @@ if (url.pathname === '/') {
 
   const title = videos[videoId];
   const imageUrl =
-    `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  'https://nygmusichub.com/nyg-video-hub-cover.png';
   const shareUrl =
     `https://nygmusichub.com/?video=${encodeURIComponent(videoId)}`;
 
