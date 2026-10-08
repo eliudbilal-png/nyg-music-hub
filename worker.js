@@ -76,7 +76,12 @@ export default {
     }
 
     if (url.pathname.startsWith('/api/')) {
-      if (!await sessionValid(request, env)) return reply({ error: 'Tafadhali ingia kama admin.' }, 401);
+  if (
+    url.pathname !== '/api/video/views' &&
+    !await sessionValid(request, env)
+  ) {
+    return reply({ error: 'Tafadhali ingia kama admin.' }, 401);
+  }
       if (url.pathname === '/api/admin/status') return reply({ aiConfigured: Boolean(env.ELEVENLABS_API_KEY) });
 
       if (url.pathname === '/api/music/history' && request.method === 'GET') {
