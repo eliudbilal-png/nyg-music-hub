@@ -322,6 +322,33 @@ nav a{
 .top-header .language-toggle{
   justify-self:end;
 }
+  /* NYG VIDEO HUB - MOBILE 60/40 */
+@media screen and (max-width: 768px) {
+  #new-song .nyg-video-layout {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) !important;
+    width: 100%;
+  }
+
+  #new-song .nyg-video-layout > div {
+    min-width: 0;
+    padding: 5px !important;
+    overflow-wrap: anywhere;
+  }
+
+  #new-song .nyg-video-layout h3 {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  #new-song .nyg-video-layout p {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  #new-song .card {
+    padding: 8px;
+  }
+}
 </style>
 </head>
 <body>
@@ -484,11 +511,32 @@ nav a{
 <section id="new-song" style="scroll-margin-top:400px;">
   <h2>WIMBO MPYA</h2>
 
-  <div class="card" style="text-align:center;">
-    <img src="NEW SONG.png"
-         alt="MAOMBI - Azzo Drey feat. Nuel Henry"
-         style="width:100%; max-width:700px; height:auto; border-radius:12px;">
+<div class="card">
+  <div class="nyg-video-layout"
+       style="display:grid;
+              grid-template-columns:minmax(0,3fr) minmax(0,2fr);
+              gap:0;
+              text-align:left;">
+
+    <!-- UPANDE WA KUSHOTO -->
+    <div style="padding:10px;">
+      <h3>WIMBO MPYA</h3>
+      <div id="nyg-latest-videos">
+        <p>Video mpya zitaonekana hapa.</p>
+      </div>
+    </div>
+
+    <!-- UPANDE WA KULIA -->
+    <div style="padding:10px;">
+      <h3>WIMBO UNAOVUMA</h3>
+      <p>TOP 5 - Siku 7 zilizopita</p>
+      <div id="nyg-trending-videos">
+        <p>Nyimbo zinazovuma zitaonekana hapa.</p>
+      </div>
+    </div>
+
   </div>
+</div>
 </section>
 <section id="music">
 <h2 id="musicTitle">MUZIKI</h2>
