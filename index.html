@@ -1071,7 +1071,7 @@ async function shareNYGVideo() {
   const videoUrl = new URL(player.src);
   const videoId = videoUrl.pathname.split("/").pop();
 
-const shareUrl = "https://nygmusichub.com/?video=" + encodeURIComponent(videoId);
+const shareUrl = "https://nygmusichub.com/?video=" + encodeURIComponent(videoId) + "#new-song";
   const shareTitle = popupTitle.textContent.trim();
 
   if (navigator.share) {
