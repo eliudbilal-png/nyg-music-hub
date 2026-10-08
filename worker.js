@@ -162,8 +162,8 @@ if (url.pathname === '/') {
   if (!assetResponse.ok) return assetResponse;
 
   const title = videos[videoId];
-  const imageUrl =
-  'https://nygmusichub.com/nyg-video-hub-cover.png';
+const imageUrl =
+  'https://nygmusichub.com/nyg-video-hub-cover.jpg';
   const shareUrl =
     `https://nygmusichub.com/?video=${encodeURIComponent(videoId)}`;
 
