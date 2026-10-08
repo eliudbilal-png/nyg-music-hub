@@ -1021,7 +1021,24 @@ shareButton.addEventListener("click", async function(event) {
       </iframe>
 
     </div>
+<!-- NYG VIDEO SHARE BUTTON -->
+<div style="margin-top:12px;text-align:center;">
 
+  <button type="button"
+    onclick="shareNYGVideo()"
+    style="
+      background:#FFD700;
+      color:#111;
+      border:0;
+      border-radius:8px;
+      padding:10px 24px;
+      font-size:14px;
+      font-weight:bold;
+      cursor:pointer;">
+    ↗ SHARE VIDEO
+  </button>
+
+</div>
   </div>
 </div>
 
@@ -1045,6 +1062,38 @@ function closeNYGVideo() {
   document.getElementById("nyg-popup-player").src = "";
   document.getElementById("nyg-video-popup").style.display = "none";
   document.body.style.overflow = "";
+}
+// NYG VIDEO HUB - SHARE VIDEO
+async function shareNYGVideo() {
+  const player = document.getElementById("nyg-popup-player");
+  const popupTitle = document.getElementById("nyg-popup-title");
+
+  const videoUrl = new URL(player.src);
+  const videoId = videoUrl.pathname.split("/").pop();
+
+  const shareUrl = "https://youtu.be/" + videoId;
+  const shareTitle = popupTitle.textContent.trim();
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: shareTitle,
+        text: "Tazama " + shareTitle + " kupitia NYG VIDEO HUB",
+        url: shareUrl
+      });
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        alert("Imeshindikana kushiriki video.");
+      }
+    }
+  } else {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      alert("Link ya video imenakiliwa!");
+    } catch (error) {
+      prompt("Nakili link ya video:", shareUrl);
+    }
+  }
 }
 </script>
 
