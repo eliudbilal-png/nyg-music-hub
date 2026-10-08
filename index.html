@@ -980,6 +980,73 @@ shareButton.addEventListener("click", async function(event) {
   });
 });
 </script>
+  
+<!-- NYG VIDEO HUB POPUP -->
+<div id="nyg-video-popup"
+     style="display:none;position:fixed;inset:0;
+            background:rgba(0,0,0,0.88);
+            z-index:99999;align-items:center;
+            justify-content:center;padding:12px;">
+
+  <div style="background:#777777;width:100%;
+              max-width:850px;border-radius:12px;
+              padding:12px;position:relative;
+              max-height:90vh;overflow-y:auto;">
+
+    <button type="button"
+            onclick="closeNYGVideo()"
+            aria-label="Funga video"
+            style="position:absolute;top:8px;right:8px;
+                   background:#111;color:white;
+                   border:0;border-radius:50%;
+                   width:36px;height:36px;
+                   font-size:23px;cursor:pointer;
+                   z-index:2;">&times;</button>
+
+    <h3 id="nyg-popup-title"
+        style="color:#FFD700;font-size:17px;
+               padding-right:45px;margin:5px 0 12px;">
+      NYG VIDEO HUB
+    </h3>
+
+    <div style="position:relative;width:100%;
+                aspect-ratio:16/9;background:black;">
+
+      <iframe id="nyg-popup-player"
+              title="NYG Video Player"
+              style="width:100%;height:100%;border:0;"
+              allow="autoplay;encrypted-media;picture-in-picture"
+              allowfullscreen>
+      </iframe>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+function openNYGVideo(videoId, title) {
+  const popup = document.getElementById("nyg-video-popup");
+  const player = document.getElementById("nyg-popup-player");
+
+  document.getElementById("nyg-popup-title").textContent =
+    title || "NYG VIDEO HUB";
+
+  player.src =
+    "https://www.youtube-nocookie.com/embed/" +
+    encodeURIComponent(videoId) + "?autoplay=1";
+
+  popup.style.display = "flex";
+  document.body.style.overflow = "hidden";
+}
+
+function closeNYGVideo() {
+  document.getElementById("nyg-popup-player").src = "";
+  document.getElementById("nyg-video-popup").style.display = "none";
+  document.body.style.overflow = "";
+}
+</script>
+
 </body>
 </html>
   
