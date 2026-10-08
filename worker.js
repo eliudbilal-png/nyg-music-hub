@@ -139,6 +139,41 @@ export default {
       const headers = new Headers(); object.writeHttpMetadata(headers); headers.set('etag', object.httpEtag);
       return new Response(object.body, { headers });
     }
+    // NYG VIDEO HUB - VIDEO VIEWS API
+if (url.pathname === '/api/video/views') {
+  const videoId = url.searchParams.get('video_id');
+
+  const allowedVideos = [
+    'EwOFoJZerDs',
+    '-lkZ63H_pqs',
+    'aAxYDrwIdsw',
+    '8Ov3e5pqBiE',
+    '_pbNPbDjArw'
+  ];
+
+  if (!videoId || !allowedVideos.includes(videoId)) {
+    return Response.json(
+      { error: 'Invalid video ID' },
+      { status: 400 }
+    );
+  }
+
+  if (request.method !== 'GET') {
+    return Response.json(
+      { error: 'Method not allowed' },
+      { status: 405 }
+    );
+  }
+
+  const result = await env.DB.prepare(
+    'SELECT COUNT(*) AS views FROM video_views WHERE video_id = ?'
+  ).bind(videoId).first();
+
+  return Response.json({
+    video_id: videoId,
+    views: result?.views ?? 0
+  });
+}
 if (url.pathname === '/') {
   const newUrl = new URL('/index.html', request.url);
   const assetResponse = await env.ASSETS.fetch(
