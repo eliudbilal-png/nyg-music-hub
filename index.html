@@ -1071,7 +1071,7 @@ async function shareNYGVideo() {
   const videoUrl = new URL(player.src);
   const videoId = videoUrl.pathname.split("/").pop();
 
-  const shareUrl = "https://youtu.be/" + videoId;
+const shareUrl = "https://nygmusichub.com/?video=" + encodeURIComponent(videoId);
   const shareTitle = popupTitle.textContent.trim();
 
   if (navigator.share) {
@@ -1096,7 +1096,24 @@ async function shareNYGVideo() {
   }
 }
 </script>
+<script>
+window.addEventListener("load", function () {
+  const params = new URLSearchParams(window.location.search);
+  const videoId = params.get("video");
 
+  const videos = {
+    "EwOFoJZerDs": "MAOMBI - AZZO DREY",
+    "-lkZ63H_pqs": "SEMA NENO - NYG WORSHIP",
+    "aAxYDrwIdsw": "TEMBEA NA YESU - NYG WORSHIP",
+    "8Ov3e5pqBiE": "TWENDE - NUEL HENRY",
+    "_pbNPbDjArw": "JIRANI - AFANDE BRIGHT"
+  };
+
+  if (videoId && Object.prototype.hasOwnProperty.call(videos, videoId)) {
+    openNYGVideo(videoId, videos[videoId]);
+  }
+});
+</script>
 </body>
 </html>
   
