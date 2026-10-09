@@ -552,6 +552,10 @@ nav a{
 </a>
   <h4>MAOMBI – AZZO DREY</h4>
   <p>Wimbo mpya unaotangazwa</p>
+  <div data-video-views="EwOFoJZerDs"
+     style="font-size:12px;color:#FFD700;margin-top:5px;">
+  👁 0 Views
+</div>
 </div>
       </div>
       <hr style="border:0;border-top:1px solid #FFD700;margin:20px 0 15px;">
@@ -1084,6 +1088,30 @@ function closeNYGVideo() {
   document.getElementById("nyg-video-popup").style.display = "none";
   document.body.style.overflow = "";
 }
+  // NYG VIDEO HUB - Display real video views
+async function loadNYGVideoViews() {
+  const elements = document.querySelectorAll("[data-video-views]");
+
+  for (const element of elements) {
+    const videoId = element.dataset.videoViews;
+
+    try {
+      const response = await fetch(
+        "/api/video/views?video_id=" + encodeURIComponent(videoId),
+        { cache: "no-store" }
+      );
+
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      element.textContent = "👁 " + data.views + " Views";
+    } catch (error) {
+      console.error("Failed to load views:", error);
+    }
+  }
+}
+
+document.addEventListener("DOMContentLoaded", loadNYGVideoViews);
 // NYG VIDEO HUB - SHARE VIDEO
 async function shareNYGVideo() {
   const player = document.getElementById("nyg-popup-player");
