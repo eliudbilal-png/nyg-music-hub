@@ -163,12 +163,43 @@ if (url.pathname === '/api/video/views') {
     );
   }
 
-  if (request.method !== 'GET') {
+if (request.method === 'POST') {
+  const data = await request.json().catch(() => null);
+  const visitorId = data?.visitor_id;
+
+  if (
+    typeof visitorId !== 'string' ||
+    !/^[a-zA-Z0-9_-]{16,128}$/.test(visitorId)
+  ) {
     return Response.json(
-      { error: 'Method not allowed' },
-      { status: 405 }
+      { error: 'Invalid visitor ID' },
+      { status: 400 }
     );
   }
+
+  const result = await env.DB.prepare(`
+    INSERT INTO video_views (video_id, visitor_id)
+    SELECT ?, ?
+    WHERE NOT EXISTS (
+      SELECT 1 FROM video_views
+      WHERE video_id = ?
+        AND visitor_id = ?
+        AND viewed_at > datetime('now', '-24 hours')
+    )
+  `).bind(videoId, visitorId, videoId, visitorId).run();
+
+  return Response.json({
+    success: true,
+    counted: result.meta?.changes === 1
+  });
+}
+
+if (request.method !== 'GET') {
+  return Response.json(
+    { error: 'Method not allowed' },
+    { status: 405 }
+  );
+}
 
   const result = await env.DB.prepare(
     'SELECT COUNT(*) AS views FROM video_views WHERE video_id = ?'
