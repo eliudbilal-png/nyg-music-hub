@@ -1069,7 +1069,7 @@ function openNYGVideo(videoId, title) {
       localStorage.setItem("nyg_video_visitor_id", visitorId);
     }
 
-fetch("/api/video/views?video_id=" +
+fetch("/api/video/views?video=" +
   encodeURIComponent(videoId), {
       method: "POST",
   headers: {
