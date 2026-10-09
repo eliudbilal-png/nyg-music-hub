@@ -75,7 +75,10 @@ export default {
       return reply({ ok: true }, 200, { 'set-cookie': 'nyg_admin=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0' });
     }
 
-    if (url.pathname.startsWith('/api/')) {
+    if (
+  url.pathname.startsWith('/api/') &&
+  url.pathname !== '/api/video/views'
+) {
   if (
     url.pathname !== '/api/video/views' &&
     !await sessionValid(request, env)
