@@ -1098,7 +1098,8 @@ async function loadNYGVideoViews() {
 
     try {
       const response = await fetch(
-        "/api/video/views?video_id=" + encodeURIComponent(videoId),
+        "/api/video/views?video=" +
+        encodeURIComponent(videoId),
         { cache: "no-store" }
       );
 
