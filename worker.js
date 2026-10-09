@@ -149,7 +149,7 @@ export default {
     }
     // NYG VIDEO HUB - VIDEO VIEWS API
 if (url.pathname === '/api/video/views') {
-  const videoId = url.searchParams.get('video_id');
+const videoId = url.searchParams.get('video');
 
   const allowedVideos = [
     'EwOFoJZerDs',
