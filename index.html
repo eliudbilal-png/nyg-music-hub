@@ -1150,6 +1150,11 @@ const shareUrl = "https://nygmusichub.com/?video=" + encodeURIComponent(videoId)
 window.addEventListener("load", function () {
   const params = new URLSearchParams(window.location.search);
   const videoId = params.get("video");
+  if (videoId) {
+  const cleanUrl = new URL(window.location.href);
+  cleanUrl.searchParams.delete("video");
+  window.history.replaceState({}, "", cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+}
 
   const videos = {
     "EwOFoJZerDs": "MAOMBI - AZZO DREY",
