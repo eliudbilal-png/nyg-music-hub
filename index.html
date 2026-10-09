@@ -1121,13 +1121,17 @@ async function loadNYGVideoViews() {
         { cache: "no-store" }
       );
 
-      if (!response.ok) continue;
+      if (!response.ok) {
+  element.textContent = "👁 Views unavailable";
+  continue;
+}
 
       const data = await response.json();
       element.textContent = "👁 " + data.views + " Views";
     } catch (error) {
-      console.error("Failed to load views:", error);
-    }
+  console.error("Failed to load views:", error);
+  element.textContent = "👁 Views unavailable";
+}
   }
 }
 
