@@ -1056,6 +1056,27 @@ function openNYGVideo(videoId, title) {
 
   popup.style.display = "flex";
   document.body.style.overflow = "hidden";
+    // NYG VIDEO HUB - Record video view
+  try {
+    let visitorId = localStorage.getItem("nyg_video_visitor_id");
+
+    if (!visitorId) {
+      visitorId = crypto.randomUUID();
+      localStorage.setItem("nyg_video_visitor_id", visitorId);
+    }
+
+    fetch("/api/video/views?video=" + encodeURIComponent(videoId), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        visitor_id: visitorId
+      })
+    }).catch(error => console.error("Video view error:", error));
+  } catch (error) {
+    console.error("Video view tracking error:", error);
+  }
 }
 
 function closeNYGVideo() {
