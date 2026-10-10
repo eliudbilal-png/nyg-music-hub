@@ -75,25 +75,16 @@ export default {
       return reply({ ok: true }, 200, { 'set-cookie': 'nyg_admin=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0' });
     }
 
-    
-const publicVideoAPIs = new Set([
-  '/api/video/views',
-  '/api/video/likes',
-  '/api/video/comments'
-]);
-
-if (
+    if (
   url.pathname.startsWith('/api/') &&
-  !publicVideoAPIs.has(url.pathname)
+  url.pathname !== '/api/video/views'
 ) {
-  if (!await sessionValid(request, env)) {
-    return reply(
-      { error: 'Tafadhali ingia kama admin.' },
-      401
-    );
+  if (
+    url.pathname !== '/api/video/views' &&
+    !await sessionValid(request, env)
+  ) {
+    return reply({ error: 'Tafadhali ingia kama admin.' }, 401);
   }
-}
-
       if (url.pathname === '/api/admin/status') return reply({ aiConfigured: Boolean(env.ELEVENLABS_API_KEY) });
 
       if (url.pathname === '/api/music/history' && request.method === 'GET') {
@@ -164,7 +155,7 @@ const videoId = url.searchParams.get('video');
     'EwOFoJZerDs',
     '-lkZ63H_pqs',
     'aAxYDrwIdsw',
-    '80v3e5pqBiE',
+    '8Ov3e5pqBiE',
     '_pbNPbDjArw'
   ];
 
