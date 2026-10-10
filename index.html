@@ -1059,11 +1059,182 @@ shareButton.addEventListener("click", async function(event) {
   </button>
 
 </div>
+    <!-- NYG VIDEO HUB - LIKES AND COMMENTS -->
+<div id="nyg-video-interactions"
+     style="margin-top:18px;text-align:center;">
+
+  <button type="button"
+          id="nyg-like-button"
+          onclick="likeNYGVideo()"
+          style="background:#1877f2;color:white;border:0;
+                 padding:10px 20px;border-radius:8px;
+                 font-weight:bold;cursor:pointer;">
+    👍 LIKE <span id="nyg-like-count">0</span>
+  </button>
+
+  <div style="margin-top:18px;text-align:left;">
+    <h3 style="color:#FFD700;">💬 COMMENTS</h3>
+
+    <input id="nyg-comment-name"
+           type="text"
+           maxlength="60"
+           placeholder="Jina lako"
+           style="width:100%;box-sizing:border-box;
+                  padding:10px;margin-bottom:8px;">
+
+    <textarea id="nyg-comment-text"
+              maxlength="1000"
+              placeholder="Andika maoni yako..."
+              style="width:100%;box-sizing:border-box;
+                     padding:10px;min-height:75px;"></textarea>
+
+    <button type="button"
+            onclick="submitNYGComment()"
+            style="background:#FFD700;color:#111;border:0;
+                   padding:10px 18px;border-radius:8px;
+                   margin-top:8px;font-weight:bold;">
+      TUMA COMMENT
+    </button>
+
+    <div id="nyg-comments-list"
+         style="margin-top:15px;color:white;"></div>
+  </div>
+</div>
   </div>
 </div>
 
 <script>
+  // NYG VIDEO HUB - LIKES AND COMMENTS
+
+async function loadNYGVideoInteractions(videoId) {
+  const count = document.getElementById("nyg-like-count");
+  const list = document.getElementById("nyg-comments-list");
+
+  count.textContent = "...";
+  list.textContent = "Inapakia maoni...";
+
+  try {
+    const [likesResponse, commentsResponse] = await Promise.all([
+      fetch("/api/video/likes?video=" + encodeURIComponent(videoId)),
+      fetch("/api/video/comments?video=" + encodeURIComponent(videoId))
+    ]);
+
+    if (!likesResponse.ok || !commentsResponse.ok) {
+      throw new Error("API error");
+    }
+
+    const likes = await likesResponse.json();
+    const comments = await commentsResponse.json();
+
+    if (window.nygCurrentVideoId !== videoId) return;
+
+    count.textContent = likes.likes ?? 0;
+    list.replaceChildren();
+
+    if (!comments.comments?.length) {
+      list.textContent = "Hakuna maoni bado.";
+      return;
+    }
+
+    for (const item of comments.comments) {
+      const box = document.createElement("div");
+      box.style.cssText =
+        "padding:10px;border-bottom:1px solid #777;";
+
+      const name = document.createElement("strong");
+      name.textContent = item.commenter_name;
+
+      const message = document.createElement("p");
+      message.textContent = item.comment_text;
+
+      box.append(name, message);
+      list.appendChild(box);
+    }
+
+  } catch (error) {
+    console.error(error);
+    count.textContent = "-";
+    list.textContent = "Imeshindikana kupakia maoni.";
+  }
+}
+
+async function likeNYGVideo() {
+  const videoId = window.nygCurrentVideoId;
+  if (!videoId) return;
+
+  const button = document.getElementById("nyg-like-button");
+  button.disabled = true;
+
+  try {
+    let visitorId = localStorage.getItem("nyg_video_visitor_id");
+
+    if (!visitorId) {
+      visitorId = crypto.randomUUID();
+      localStorage.setItem("nyg_video_visitor_id", visitorId);
+    }
+
+    const response = await fetch(
+      "/api/video/likes?video=" + encodeURIComponent(videoId),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visitor_id: visitorId })
+      }
+    );
+
+    if (!response.ok) throw new Error("Like failed");
+
+    const data = await response.json();
+
+    if (window.nygCurrentVideoId === videoId) {
+      document.getElementById("nyg-like-count").textContent = data.likes;
+      
+    }
+
+  } catch (error) {
+    alert("Imeshindikana kuweka Like.");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function submitNYGComment() {
+  const videoId = window.nygCurrentVideoId;
+  if (!videoId) return;
+
+  const nameInput = document.getElementById("nyg-comment-name");
+  const textInput = document.getElementById("nyg-comment-text");
+
+  const commenter_name = nameInput.value.trim();
+  const comment_text = textInput.value.trim();
+
+  if (!commenter_name || comment_text.length < 2) {
+    alert("Andika jina na maoni yako.");
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      "/api/video/comments?video=" + encodeURIComponent(videoId),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commenter_name, comment_text })
+      }
+    );
+
+    if (!response.ok) throw new Error("Comment failed");
+
+    textInput.value = "";
+    await loadNYGVideoInteractions(videoId);
+
+  } catch (error) {
+    alert("Imeshindikana kutuma Comment.");
+  }
+}
 function openNYGVideo(videoId, title) {
+  window.nygCurrentVideoId = videoId;
+loadNYGVideoInteractions(videoId);
   const popup = document.getElementById("nyg-video-popup");
   const player = document.getElementById("nyg-popup-player");
 
