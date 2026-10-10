@@ -16,7 +16,7 @@ async function sessionValid(request, env) {
   const token = (request.headers.get('Cookie') || '').split(';').map(v => v.trim()).find(v => v.startsWith('nyg_admin='))?.slice(10);
   if (!token) return false;
   const [expires, signature] = token.split('.');
-  if (!expires || !signature || Number(expires) < Date.now()) return false;
+  if (!expires || !signature || !/^\d+$/.test(expires) || Number(expires) < Date.now()) return false;
   const expected = await sign(expires, env.ADMIN_SESSION_SECRET);
   if (signature.length !== expected.length) return false;
   let difference = 0;
@@ -24,78 +24,287 @@ async function sessionValid(request, env) {
   return difference === 0;
 }
 
-const reply = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers } });
+const reply = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {
+  status,
+  headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers }
+});
+
+const allowedVideos = new Set([
+  'EwOFoJZerDs', '-lkZ63H_pqs', 'aAxYDrwIdsw', '80v3e5pqBiE', '_pbNPbDjArw'
+]);
+
+const videos = {
+  'EwOFoJZerDs': 'MAOMBI - AZZO DREY',
+  '-lkZ63H_pqs': 'SEMA NENO - NYG WORSHIP',
+  'aAxYDrwIdsw': 'TEMBEA NA YESU - NYG WORSHIP',
+  '80v3e5pqBiE': 'TWENDE - NUEL HENRY',
+  '_pbNPbDjArw': 'JIRANI - AFANDE BRIGHT'
+};
+
+function validVisitorId(value) {
+  return typeof value === 'string' && /^[a-zA-Z0-9_-]{16,128}$/.test(value);
+}
+
+function sameOrigin(request, url) {
+  const origin = request.headers.get('Origin');
+  if (origin) return origin === url.origin;
+  const referer = request.headers.get('Referer');
+  if (referer) {
+    try {
+      return new URL(referer).origin === url.origin;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === "/api/clickpesa/status") {
-      return reply({
-        connected: Boolean(
-          env.CLICKPESA_CLIENT_ID &&
-          env.CLICKPESA_API_KEY
-        )
+    const path = url.pathname;
+    const method = request.method;
+
+    // NYG VIDEO HUB - PUBLIC VIDEO APIs
+    if (path === '/api/video/views' || path === '/api/video/likes' || path === '/api/video/comments') {
+      if (method !== 'GET' && method !== 'POST') {
+        return reply({ error: 'Method not allowed' }, 405, { Allow: 'GET, POST' });
+      }
+
+      const videoId = url.searchParams.get('video');
+
+      if (!videoId || !allowedVideos.has(videoId)) {
+        return reply({ error: 'Invalid video ID' }, 400);
+      }
+
+      if (!env.DB) {
+        return reply({ error: 'Database haijaunganishwa.' }, 503);
+      }
+
+      try {
+        // VIDEO VIEWS
+        if (path === '/api/video/views') {
+          if (method === 'POST') {
+            if (!sameOrigin(request, url)) {
+              return reply({ error: 'Forbidden origin' }, 403);
+            }
+
+            const data = await request.json().catch(() => null);
+            const visitorId = data?.visitor_id;
+
+            if (!validVisitorId(visitorId)) {
+              return reply({ error: 'Invalid visitor ID' }, 400);
+            }
+
+            const result = await env.DB.prepare(`
+              INSERT INTO video_views (video_id, visitor_id)
+              SELECT ?, ?
+              WHERE NOT EXISTS (
+                SELECT 1 FROM video_views
+                WHERE video_id = ? AND visitor_id = ?
+                  AND viewed_at > datetime('now', '-24 hours')
+              )
+            `).bind(videoId, visitorId, videoId, visitorId).run();
+
+            return reply({
+              success: true,
+              counted: result.meta?.changes === 1
+            });
+          }
+
+          const result = await env.DB.prepare(
+            'SELECT COUNT(*) AS views FROM video_views WHERE video_id = ?'
+          ).bind(videoId).first();
+
+          return reply({
+            video_id: videoId,
+            views: result?.views ?? 0
+          });
+        }
+
+        // VIDEO LIKES
+        if (path === '/api/video/likes') {
+          if (method === 'GET') {
+            const result = await env.DB.prepare(
+              'SELECT COUNT(*) AS likes FROM video_likes WHERE video_id = ?'
+            ).bind(videoId).first();
+
+            return reply({
+              video_id: videoId,
+              likes: result?.likes ?? 0
+            });
+          }
+
+          if (!sameOrigin(request, url)) {
+            return reply({ error: 'Forbidden origin' }, 403);
+          }
+
+          const data = await request.json().catch(() => null);
+          const visitorId = data?.visitor_id;
+
+          if (!validVisitorId(visitorId)) {
+            return reply({ error: 'Invalid visitor ID' }, 400);
+          }
+
+          const result = await env.DB.prepare(
+            'INSERT OR IGNORE INTO video_likes (video_id, visitor_id) VALUES (?, ?)'
+          ).bind(videoId, visitorId).run();
+
+          const total = await env.DB.prepare(
+            'SELECT COUNT(*) AS likes FROM video_likes WHERE video_id = ?'
+          ).bind(videoId).first();
+
+          return reply({
+            success: true,
+            counted: result.meta?.changes === 1,
+            likes: total?.likes ?? 0
+          });
+        }
+
+        // VIDEO COMMENTS
+        if (method === 'GET') {
+          const rows = await env.DB.prepare(`
+            SELECT id, commenter_name, comment_text, created_at
+            FROM video_comments
+            WHERE video_id = ?
+            ORDER BY id DESC
+            LIMIT 50
+          `).bind(videoId).all();
+
+          return reply({
+            video_id: videoId,
+            comments: rows.results || []
+          });
+        }
+
+        if (!sameOrigin(request, url)) {
+          return reply({ error: 'Forbidden origin' }, 403);
+        }
+
+        const length = Number(request.headers.get('content-length') || 0);
+
+        if (length > 4096) {
+          return reply({ error: 'Comment request too large' }, 413);
+        }
+
+        const data = await request.json().catch(() => null);
+        const name = typeof data?.commenter_name === 'string'
+          ? data.commenter_name.trim() : '';
+        const comment = typeof data?.comment_text === 'string'
+          ? data.comment_text.trim() : '';
+
+        if (name.length < 1 || name.length > 60 || comment.length < 2 || comment.length > 1000) {
+          return reply({ error: 'Jina liwe herufi 1–60 na maoni herufi 2–1000.' }, 400);
+        }
+
+        if (/[\u0000-\u001f\u007f]/.test(name) ||
+            /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(comment)) {
+          return reply({ error: 'Invalid characters' }, 400);
+        }
+
+        await env.DB.prepare(
+          'INSERT INTO video_comments (video_id, commenter_name, comment_text) VALUES (?, ?, ?)'
+        ).bind(videoId, name, comment).run();
+
+        return reply({ success: true }, 201);
+
+      } catch (error) {
+        console.error('NYG video API error', error);
+        return reply({
+          error: 'Video API imeshindwa. Kagua Worker logs na D1 schema.'
+        }, 500);
+      }
+    }
+
+    // ADMIN LOGIN
+    if (path === '/api/admin/login' && method === 'POST') {
+      if (!sameOrigin(request, url)) {
+        return reply({ error: 'Forbidden origin' }, 403);
+      }
+
+      if (!env.ADMIN_ACCESS_CODE || !env.ADMIN_SESSION_SECRET) {
+        return reply({ error: 'Admin login bado haijawekwa kwenye server.' }, 503);
+      }
+
+      const body = await request.json().catch(() => ({}));
+
+      if (body.code !== env.ADMIN_ACCESS_CODE) {
+        return reply({ error: 'Access code si sahihi.' }, 401);
+      }
+
+      const expires = String(Date.now() + 8 * 60 * 60 * 1000);
+      const token = `${expires}.${await sign(expires, env.ADMIN_SESSION_SECRET)}`;
+
+      return reply({ ok: true }, 200, {
+        'set-cookie': `nyg_admin=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=28800`
       });
     }
 
-    if (url.pathname === "/api/clickpesa/test") {
-      try {
-        const response = await fetch(
-          "https://api.clickpesa.com/third-parties/generate-token",
-          {
-            method: "POST",
-            headers: {
-              "api-key": env.CLICKPESA_API_KEY,
-              "client-id": env.CLICKPESA_CLIENT_ID
-            }
-          }
-        );
+    // ADMIN LOGOUT
+    if (path === '/api/admin/logout' && method === 'POST') {
+      return reply({ ok: true }, 200, {
+        'set-cookie': 'nyg_admin=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0'
+      });
+    }
 
-        return reply({
-          authenticated: response.ok,
-          status: response.status
-        });
-      } catch (error) {
-        return reply({
-          authenticated: false,
-          error: "ClickPesa haijafikiwa"
-        }, 502);
+    // CLICKPESA STATUS
+    if (path === '/api/clickpesa/status' && method === 'GET') {
+      return reply({
+        connected: Boolean(env.CLICKPESA_CLIENT_ID && env.CLICKPESA_API_KEY)
+      });
+    }
+
+    // PROTECTED ADMIN APIs
+    if (path.startsWith('/api/')) {
+      if (!await sessionValid(request, env)) {
+        return reply({ error: 'Tafadhali ingia kama admin.' }, 401);
       }
-    }
-    if (url.pathname === '/api/admin/login' && request.method === 'POST') {
-      if (!env.ADMIN_ACCESS_CODE || !env.ADMIN_SESSION_SECRET) return reply({ error: 'Admin login bado haijawekwa kwenye server.' }, 503);
-      const body = await request.json().catch(() => ({}));
-      if (body.code !== env.ADMIN_ACCESS_CODE) return reply({ error: 'Access code si sahihi.' }, 401);
-      const expires = String(Date.now() + 8 * 60 * 60 * 1000);
-      const token = `${expires}.${await sign(expires, env.ADMIN_SESSION_SECRET)}`;
-      return reply({ ok: true }, 200, { 'set-cookie': `nyg_admin=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=28800` });
-    }
 
-    if (url.pathname === '/api/admin/logout' && request.method === 'POST') {
-      return reply({ ok: true }, 200, { 'set-cookie': 'nyg_admin=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0' });
-    }
+      if (method === 'POST' && !sameOrigin(request, url)) {
+        return reply({ error: 'Forbidden origin' }, 403);
+      }
 
-const publicVideoPaths = [
-  '/api/video/views',
-  '/api/video/likes',
-  '/api/video/comments'
-];
+      // CLICKPESA TEST
+      if (path === '/api/clickpesa/test' && method === 'POST') {
+        try {
+          const response = await fetch(
+            'https://api.clickpesa.com/third-parties/generate-token',
+            {
+              method: 'POST',
+              headers: {
+                'api-key': env.CLICKPESA_API_KEY,
+                'client-id': env.CLICKPESA_CLIENT_ID
+              }
+            }
+          );
 
-if (
-  url.pathname.startsWith('/api/') &&
-  !publicVideoPaths.includes(url.pathname)
-) {
-  if (!await sessionValid(request, env)) {
-    return reply(
-      { error: 'Tafadhali ingia kama admin.' },
-      401
-    );
-  }
-  }
-      if (url.pathname === '/api/admin/status') return reply({ aiConfigured: Boolean(env.ELEVENLABS_API_KEY) });
+          return reply({
+            authenticated: response.ok,
+            status: response.status
+          });
 
-      if (url.pathname === '/api/music/history' && request.method === 'GET') {
-        const listed = await env.MUSIC_BUCKET.list({ prefix: 'generated/', limit: 50 });
+        } catch (error) {
+          return reply({
+            authenticated: false,
+            error: 'ClickPesa haijafikiwa'
+          }, 502);
+        }
+      }
+
+      // ADMIN STATUS
+      if (path === '/api/admin/status' && method === 'GET') {
+        return reply({
+          aiConfigured: Boolean(env.ELEVENLABS_API_KEY)
+        });
+      }
+
+      // MUSIC HISTORY
+      if (path === '/api/music/history' && method === 'GET') {
+        const listed = await env.MUSIC_BUCKET.list({
+          prefix: 'generated/',
+          limit: 50
+        });
+
         const items = listed.objects
           .sort((a, b) => new Date(b.uploaded) - new Date(a.uploaded))
           .map(object => ({
@@ -105,183 +314,179 @@ if (
             size: object.size,
             url: `/music/${encodeURIComponent(object.key)}`
           }));
+
         return reply({ items });
       }
 
-      if (url.pathname === '/api/humming/upload' && request.method === 'POST') {
-        const type = (request.headers.get('content-type') || '').split(';')[0].toLowerCase();
+      // HUMMING UPLOAD
+      if (path === '/api/humming/upload' && method === 'POST') {
+        const type = (request.headers.get('content-type') || '')
+          .split(';')[0].toLowerCase();
+
         const allowed = new Map([
-          ['audio/webm', 'webm'], ['audio/ogg', 'ogg'], ['audio/mp4', 'm4a'],
-          ['audio/mpeg', 'mp3'], ['audio/wav', 'wav'], ['audio/x-wav', 'wav']
+          ['audio/webm', 'webm'],
+          ['audio/ogg', 'ogg'],
+          ['audio/mp4', 'm4a'],
+          ['audio/mpeg', 'mp3'],
+          ['audio/wav', 'wav'],
+          ['audio/x-wav', 'wav']
         ]);
-        if (!allowed.has(type)) return reply({ error: 'Tuma audio ya WebM, OGG, M4A, MP3 au WAV.' }, 415);
+
+        if (!allowed.has(type)) {
+          return reply({ error: 'Tuma audio ya WebM, OGG, M4A, MP3 au WAV.' }, 415);
+        }
+
         const length = Number(request.headers.get('content-length') || 0);
-        if (length > 15 * 1024 * 1024) return reply({ error: 'Recording imezidi MB 15.' }, 413);
+
+        if (length > 15 * 1024 * 1024) {
+          return reply({ error: 'Recording imezidi MB 15.' }, 413);
+        }
+
         const audio = await request.arrayBuffer();
-        if (audio.byteLength > 15 * 1024 * 1024) return reply({ error: 'Recording imezidi MB 15.' }, 413);
+
+        if (audio.byteLength > 15 * 1024 * 1024) {
+          return reply({ error: 'Recording imezidi MB 15.' }, 413);
+        }
+
         const id = crypto.randomUUID();
         const key = `references/${id}.${allowed.get(type)}`;
-        await env.MUSIC_BUCKET.put(key, audio, { httpMetadata: { contentType: type } });
-        return reply({ id, url: `/music/${encodeURIComponent(key)}` });
+
+        await env.MUSIC_BUCKET.put(key, audio, {
+          httpMetadata: { contentType: type }
+        });
+
+        return reply({
+          id,
+          url: `/music/${encodeURIComponent(key)}`
+        });
       }
 
-      if (url.pathname === '/api/music/generate' && request.method === 'POST') {
-        if (!env.ELEVENLABS_API_KEY) return reply({ error: 'AI engine bado haijaunganishwa.' }, 503);
+      // AI MUSIC GENERATION
+      if (path === '/api/music/generate' && method === 'POST') {
+        if (!env.ELEVENLABS_API_KEY) {
+          return reply({ error: 'AI engine bado haijaunganishwa.' }, 503);
+        }
+
         const b = await request.json().catch(() => ({}));
         const duration = Math.min(180, Math.max(30, Number(b.duration) || 30));
         const bpm = Math.min(180, Math.max(50, Number(b.bpm) || 96));
-        const prompt = `${String(b.prompt || '').slice(0,1800)}. ${b.genre} style, ${b.mood} mood, ${b.key}, ${bpm} BPM. Instruments: ${String(b.instruments || 'piano, bass and drums').slice(0,300)}. Instrumental only, no lead vocals.`;
-        if (prompt.length < 40) return reply({ error: 'Andika maelezo ya muziki kwanza.' }, 400);
 
-        const ai = await fetch('https://api.elevenlabs.io/v1/music?output_format=mp3_44100_192', {
-          method: 'POST', headers: { 'content-type': 'application/json', 'xi-api-key': env.ELEVENLABS_API_KEY },
-          body: JSON.stringify({ prompt, music_length_ms: duration * 1000, model_id: 'music_v2' })
-        });
-        if (!ai.ok) return reply({ error: `AI generation imeshindwa (${ai.status}). Credits hazitakatwa tena bila kukagua.` }, 502);
+        const prompt = `${String(b.prompt || '').slice(0, 1800)}. ${b.genre} style, ${b.mood} mood, ${b.key}, ${bpm} BPM. Instruments: ${String(b.instruments || 'piano, bass and drums').slice(0, 300)}. Instrumental only, no lead vocals.`;
+
+        if (prompt.length < 40) {
+          return reply({ error: 'Andika maelezo ya muziki kwanza.' }, 400);
+        }
+
+        const ai = await fetch(
+          'https://api.elevenlabs.io/v1/music?output_format=mp3_44100_192',
+          {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'xi-api-key': env.ELEVENLABS_API_KEY
+            },
+            body: JSON.stringify({
+              prompt,
+              music_length_ms: duration * 1000,
+              model_id: 'music_v2'
+            })
+          }
+        );
+
+        if (!ai.ok) {
+          return reply({
+            error: `AI generation imeshindwa (${ai.status}). Credits hazitakatwa tena bila kukagua.`
+          }, 502);
+        }
+
         const id = crypto.randomUUID();
         const key = `generated/${id}.mp3`;
-        await env.MUSIC_BUCKET.put(key, ai.body, { httpMetadata: { contentType: 'audio/mpeg', contentDisposition: `attachment; filename="nyg-ai-${id}.mp3"` } });
-        return reply({ id, url: `/music/${key}` });
+
+        await env.MUSIC_BUCKET.put(key, ai.body, {
+          httpMetadata: {
+            contentType: 'audio/mpeg',
+            contentDisposition: `attachment; filename="nyg-ai-${id}.mp3"`
+          }
+        });
+
+        return reply({
+          id,
+          url: `/music/${key}`
+        });
       }
+
       return reply({ error: 'API route haijapatikana.' }, 404);
     }
 
-    if (url.pathname.startsWith('/music/')) {
-      if (!await sessionValid(request, env)) return new Response('Unauthorized', { status: 401 });
-      const key = decodeURIComponent(url.pathname.slice(7));
+    // MUSIC FILE DELIVERY
+    if (path.startsWith('/music/')) {
+      if (!await sessionValid(request, env)) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+
+      const key = decodeURIComponent(path.slice(7));
       const object = await env.MUSIC_BUCKET.get(key);
-      if (!object) return new Response('Audio haijapatikana.', { status: 404 });
-      const headers = new Headers(); object.writeHttpMetadata(headers); headers.set('etag', object.httpEtag);
+
+      if (!object) {
+        return new Response('Audio haijapatikana.', { status: 404 });
+      }
+
+      const headers = new Headers();
+      object.writeHttpMetadata(headers);
+      headers.set('etag', object.httpEtag);
+
       return new Response(object.body, { headers });
     }
-    // NYG VIDEO HUB - VIDEO VIEWS API
-if (url.pathname === '/api/video/views') {
-const videoId = url.searchParams.get('video');
 
-  const allowedVideos = [
-    'EwOFoJZerDs',
-    '-lkZ63H_pqs',
-    'aAxYDrwIdsw',
-    '80v3e5pqBiE',
-    '_pbNPbDjArw'
-  ];
+    // NYG VIDEO HUB - SOCIAL SHARING
+    if (path === '/') {
+      const newUrl = new URL('/index.html', request.url);
+      const assetResponse = await env.ASSETS.fetch(
+        new Request(newUrl, request)
+      );
 
-  if (!videoId || !allowedVideos.includes(videoId)) {
-    return Response.json(
-      { error: 'Invalid video ID' },
-      { status: 400 }
-    );
-  }
+      const videoId = url.searchParams.get('video');
 
-if (request.method === 'POST') {
-  const data = await request.json().catch(() => null);
-  const visitorId = data?.visitor_id;
-
-  if (
-    typeof visitorId !== 'string' ||
-    !/^[a-zA-Z0-9_-]{16,128}$/.test(visitorId)
-  ) {
-    return Response.json(
-      { error: 'Invalid visitor ID' },
-      { status: 400 }
-    );
-  }
-
-  const result = await env.DB.prepare(`
-    INSERT INTO video_views (video_id, visitor_id)
-    SELECT ?, ?
-    WHERE NOT EXISTS (
-      SELECT 1 FROM video_views
-      WHERE video_id = ?
-        AND visitor_id = ?
-        AND viewed_at > datetime('now', '-24 hours')
-    )
-  `).bind(videoId, visitorId, videoId, visitorId).run();
-
-  return Response.json({
-    success: true,
-    counted: result.meta?.changes === 1
-  });
-}
-
-if (request.method !== 'GET') {
-  return Response.json(
-    { error: 'Method not allowed' },
-    { status: 405 }
-  );
-}
-
-  const result = await env.DB.prepare(
-    'SELECT COUNT(*) AS views FROM video_views WHERE video_id = ?'
-  ).bind(videoId).first();
-
-  return Response.json({
-    video_id: videoId,
-    views: result?.views ?? 0
-  });
-}
-if (url.pathname === '/') {
-  const newUrl = new URL('/index.html', request.url);
-  const assetResponse = await env.ASSETS.fetch(
-    new Request(newUrl, request)
-  );
-
-  const videos = {
-    "EwOFoJZerDs": "MAOMBI - AZZO DREY",
-    "-lkZ63H_pqs": "SEMA NENO - NYG WORSHIP",
-    "aAxYDrwIdsw": "TEMBEA NA YESU - NYG WORSHIP",
-    "80v3e5pqBiE": "TWENDE - NUEL HENRY",
-    "_pbNPbDjArw": "JIRANI - AFANDE BRIGHT"
-  };
-
-  const videoId = url.searchParams.get('video');
-
-  if (!videoId || !Object.prototype.hasOwnProperty.call(videos, videoId)) {
-    return assetResponse;
-  }
-
-  if (!assetResponse.ok) return assetResponse;
-
-  const title = videos[videoId];
-const imageUrl =
-  'https://nygmusichub.com/nyg-video-hub-cover.jpg';
-  const shareUrl =
-    `https://nygmusichub.com/?video=${encodeURIComponent(videoId)}`;
-
-  const escapeHtml = (value) => String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  const tags = {
-    'og:title': title + ' | NYG VIDEO HUB',
-    'og:description': 'Tazama ' + title + ' kupitia NYG VIDEO HUB.',
-    'og:image': imageUrl,
-    'og:url': shareUrl,
-    'og:type': 'video.other'
-  };
-
-  const rewriter = new HTMLRewriter();
-
-  for (const [property, content] of Object.entries(tags)) {
-    rewriter.on(`meta[property="${property}"]`, {
-      element(element) {
-        element.setAttribute('content', content);
+      if (!videoId ||
+          !Object.prototype.hasOwnProperty.call(videos, videoId) ||
+          !assetResponse.ok) {
+        return assetResponse;
       }
-    });
-  }
 
-  const response = rewriter.transform(assetResponse);
-  const headers = new Headers(response.headers);
-  headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+      const title = videos[videoId];
+      const imageUrl = 'https://nygmusichub.com/nyg-video-hub-cover.jpg';
+      const shareUrl = `https://nygmusichub.com/?video=${encodeURIComponent(videoId)}`;
 
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers
-  });
-}
+      const tags = {
+        'og:title': title + ' | NYG VIDEO HUB',
+        'og:description': 'Tazama ' + title + ' kupitia NYG VIDEO HUB.',
+        'og:image': imageUrl,
+        'og:url': shareUrl,
+        'og:type': 'video.other'
+      };
+
+      const rewriter = new HTMLRewriter();
+
+      for (const [property, content] of Object.entries(tags)) {
+        rewriter.on(`meta[property="${property}"]`, {
+          element(element) {
+            element.setAttribute('content', content);
+          }
+        });
+      }
+
+      const response = rewriter.transform(assetResponse);
+      const headers = new Headers(response.headers);
+      headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers
+      });
+    }
+
+    // STATIC WEBSITE ASSETS
     return env.ASSETS.fetch(request);
   }
 };
