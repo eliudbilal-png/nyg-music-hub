@@ -1300,7 +1300,54 @@ async function loadNYGVideoViews() {
     }
   }
 }
+// NYG VIDEO HUB - Public Likes and Comments counts
+async function loadNYGPublicCounts() {
+  const videos = document.querySelectorAll(
+    "[data-video-likes]"
+  );
 
+  for (const element of videos) {
+    const videoId = element.dataset.videoLikes;
+
+    try {
+      const [likesResponse, commentsResponse] =
+        await Promise.all([
+          fetch("/api/video/likes?video=" +
+            encodeURIComponent(videoId)),
+          fetch("/api/video/comments?video=" +
+            encodeURIComponent(videoId))
+        ]);
+
+      if (!likesResponse.ok || !commentsResponse.ok) {
+        continue;
+      }
+
+      const likes = await likesResponse.json();
+      const comments = await commentsResponse.json();
+
+      element.textContent =
+        "👍 " + (likes.likes ?? 0) + " Likes";
+
+      const commentElement = document.querySelector(
+        '[data-video-comments="' + videoId + '"]'
+      );
+
+      if (commentElement) {
+        commentElement.textContent =
+          "💬 " + (comments.comments?.length ?? 0) +
+          " Comments";
+      }
+
+    } catch (error) {
+      console.error("NYG counts error:", error);
+    }
+  }
+}
+
+document.addEventListener(
+  "DOMContentLoaded",
+  loadNYGPublicCounts
+);
 document.addEventListener("DOMContentLoaded", loadNYGVideoViews);
 // NYG VIDEO HUB - SHARE VIDEO
 async function shareNYGVideo() {
