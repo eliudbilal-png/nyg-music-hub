@@ -1139,7 +1139,7 @@ async function loadNYGVideoInteractions(videoId) {
     for (const item of comments.comments) {
       const box = document.createElement("div");
       box.style.cssText =
-        "padding:10px;border-bottom:1px solid #777;";
+        "background:#333;padding:14px;margin-bottom:12px;border:1px solid #FFD700;border-radius:10px;color:white;";
 
       const name = document.createElement("strong");
       name.textContent = item.commenter_name;
