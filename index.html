@@ -1435,6 +1435,99 @@ window.addEventListener("load", function () {
 }, 500);
 }
 });
+  
+/* NYG VIDEO HUB - LIVE TRENDING TOP 3 */
+const nygTrendingSongs = [
+  { id: "EwOFoJZerDs", name: "MAOMBI" },
+  { id: "-lkZ63H_pqs", name: "SEMA NENO" },
+  { id: "aAxYDrwIdsw", name: "TEMBEA NA YESU" },
+  { id: "80v3e5pqBiE", name: "TWENDE" },
+  { id: "_pbNPbDjArw", name: "JIRANI" }
+];
+
+async function updateNYGTrending() {
+  const target = document.getElementById("nyg-trending-list");
+  if (!target) return;
+
+  try {
+    const results = await Promise.all(
+      nygTrendingSongs.map(async song => {
+        const video = encodeURIComponent(song.id);
+
+        const [v, l] = await Promise.all([
+          fetch("/api/video/views?video=" + video, { cache: "no-store" }),
+          fetch("/api/video/likes?video=" + video, { cache: "no-store" })
+        ]);
+
+        if (!v.ok || !l.ok) throw new Error("API error");
+
+        const views = await v.json();
+        const likes = await l.json();
+
+        return {
+          ...song,
+          views: Number(views.views ?? 0),
+          likes: Number(likes.likes ?? 0),
+          points: Number(views.views ?? 0) + Number(likes.likes ?? 0)
+        };
+      })
+    );
+
+    // Droo: points sawa, views nyingi zipewe nafasi ya juu.
+    // Zikilingana pia, likes nyingi; mwisho jina A-Z.
+    results.sort((a, b) =>
+      b.points - a.points ||
+      b.views - a.views ||
+      b.likes - a.likes ||
+      a.name.localeCompare(b.name)
+    );
+
+    const top = results.slice(0, 3);
+    const max = Math.max(...top.map(s => s.points), 1);
+
+    target.replaceChildren();
+
+    top.forEach((song, index) => {
+      const item = document.createElement("div");
+      item.style.cssText = "margin:10px 0;";
+
+      const heading = document.createElement("div");
+      heading.style.cssText =
+        "display:flex;justify-content:space-between;gap:5px;font-size:10px;";
+
+      const name = document.createElement("span");
+      name.textContent = (index + 1) + ". " + song.name;
+
+      const points = document.createElement("span");
+      points.textContent = song.points + " pts";
+
+      heading.append(name, points);
+
+      const track = document.createElement("div");
+      track.style.cssText =
+        "height:5px;background:#ffffff30;border-radius:8px;margin-top:5px;overflow:hidden;";
+
+      const bar = document.createElement("div");
+      bar.style.cssText =
+        "height:100%;background:" +
+        (index === 0 ? "#FFD700" : "#71849a") +
+        ";width:" + (song.points / max * 100) + "%;border-radius:8px;";
+
+      track.appendChild(bar);
+      item.append(heading, track);
+      target.appendChild(item);
+    });
+
+  } catch (error) {
+    console.error("NYG Trending:", error);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  updateNYGTrending();
+  setInterval(updateNYGTrending, 10000);
+});
+
 </script>
 </body>
 </html>
