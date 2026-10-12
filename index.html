@@ -1328,13 +1328,19 @@ if (!visitorId) {
       }
     );
 
-    if (!response.ok) throw new Error("Comment failed");
+if (!response.ok) {
+  const errorData = await response.json().catch(() => ({}));
+  if (response.status === 409) {
+    throw new Error("Umetumia jina tofauti na ulilosajilia awali hapa.");
+  }
+  throw new Error(errorData.error || "Imeshindikana kutuma Comment.");
+}
 
     textInput.value = "";
     await loadNYGVideoInteractions(videoId);
 
   } catch (error) {
-    alert("Imeshindikana kutuma Comment.");
+    alert(error.message);
   }
 }
 function openNYGVideo(videoId, title) {
