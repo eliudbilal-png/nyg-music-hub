@@ -1300,6 +1300,12 @@ async function submitNYGComment() {
   const nameInput = document.getElementById("nyg-comment-name");
   const textInput = document.getElementById("nyg-comment-text");
 
+  let visitorId = localStorage.getItem("nyg_video_visitor_id");
+
+if (!visitorId) {
+  visitorId = crypto.randomUUID();
+  localStorage.setItem("nyg_video_visitor_id", visitorId);
+}
   const commenter_name = nameInput.value.trim();
   const comment_text = textInput.value.trim();
 
@@ -1314,7 +1320,11 @@ async function submitNYGComment() {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ commenter_name, comment_text })
+        body: JSON.stringify({
+  commenter_name,
+  comment_text,
+  visitor_id: visitorId
+})
       }
     );
 
