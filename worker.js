@@ -202,9 +202,45 @@ export default {
           return reply({ error: 'Invalid characters' }, 400);
         }
 
-        await env.DB.prepare(
-          'INSERT INTO video_comments (video_id, commenter_name, comment_text) VALUES (?, ?, ?)'
-        ).bind(videoId, name, comment).run();
+      
+const visitorId = data?.visitor_id;
+
+if (!validVisitorId(visitorId)) {
+  return reply({ error: 'Invalid visitor ID' }, 400);
+}
+
+const existingUser = await env.DB.prepare(
+  'SELECT commenter_name FROM video_comment_users WHERE visitor_id = ?'
+).bind(visitorId).first();
+
+if (existingUser && existingUser.commenter_name !== name) {
+  return reply({
+    error: 'Tumia jina lako la awali kwenye NYG VIDEO HUB.'
+  }, 409);
+}
+
+const savedUser = await env.DB.prepare(
+  'SELECT commenter_name FROM video_comment_users WHERE visitor_id = ?'
+).bind(visitorId).first();
+
+if (savedUser && savedUser.commenter_name !== name) {
+  return reply({ error: 'Jina lako tayari limesajiliwa.' }, 409);
+}
+
+await env.DB.batch([
+  env.DB.prepare(
+    'INSERT OR IGNORE INTO video_comment_users (visitor_id, commenter_name) VALUES (?, ?)'
+  ).bind(visitorId, name),
+
+  env.DB.prepare(
+    `INSERT INTO video_comments
+    (video_id, commenter_name, comment_text, visitor_id)
+    SELECT ?, commenter_name, ?, visitor_id
+    FROM video_comment_users
+    WHERE visitor_id = ?`
+  ).bind(videoId, comment, visitorId)
+]);
+
 
         return reply({ success: true }, 201);
 
