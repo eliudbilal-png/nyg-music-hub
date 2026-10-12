@@ -438,7 +438,8 @@ export default {
       return new Response(object.body, { headers });
     }
 
-    // NYG ARTIST BIOGRAPHY - DEDICATED PAGE & SOCIAL SHARING
+
+    // NYG ARTIST BIOGRAPHY - DEDICATED PAGE & SHARING
     if (path === '/artist/nyg-worship' ||
         path === '/artist/nyg-worship/') {
 
@@ -449,71 +450,82 @@ export default {
         });
       }
 
-      const pageUrl = new URL('/index.html', request.url);
+      const title = 'NYG WORSHIP | Artist Biography';
+      const description =
+        'Fahamu historia, huduma, nyimbo na mafanikio ya NYG WORSHIP kutoka Songea, Tanzania.';
+      const imageUrl =
+        'https://nygmusichub.com/nyg-worship-team-management.jpg';
+      const shareUrl =
+        'https://nygmusichub.com/artist/nyg-worship';
+
+      const assetUrl = new URL('/index.html', request.url);
       const assetResponse = await env.ASSETS.fetch(
-        new Request(pageUrl, request)
+        new Request(assetUrl, request)
       );
 
       if (!assetResponse.ok) return assetResponse;
 
-      const title = 'NYG WORSHIP | Artist Biography';
-      const description =
-        'Fahamu historia, huduma, nyimbo na mafanikio ya NYG WORSHIP kutoka Songea, Tanzania.';
+      const escapeHtml = value => String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 
-      const imageUrl =
-        'https://nygmusichub.com/nyg-worship-team-management.jpg';
-
-      const shareUrl =
-        'https://nygmusichub.com/artist/nyg-worship';
-
-      const tags = {
-        'og:title': title,
-        'og:description': description,
-        'og:image': imageUrl,
-        'og:url': shareUrl,
-        'og:type': 'article',
-        'twitter:card': 'summary_large_image',
-        'twitter:title': title,
-        'twitter:description': description,
-        'twitter:image': imageUrl
-      };
+      const metadata = [
+        ['property', 'og:title', title],
+        ['property', 'og:description', description],
+        ['property', 'og:image', imageUrl],
+        ['property', 'og:image:secure_url', imageUrl],
+        ['property', 'og:url', shareUrl],
+        ['property', 'og:type', 'article'],
+        ['name', 'twitter:card', 'summary_large_image'],
+        ['name', 'twitter:title', title],
+        ['name', 'twitter:description', description],
+        ['name', 'twitter:image', imageUrl]
+      ].map(([attribute, name, content]) =>
+        `<meta ${attribute}="${escapeHtml(name)}" content="${escapeHtml(content)}">`
+      ).join('');
 
       const rewriter = new HTMLRewriter();
 
-      for (const [property, content] of Object.entries(tags)) {
-        const attribute = property.startsWith('twitter:')
-          ? 'name'
-          : 'property';
-
-        rewriter.on(`meta[${attribute}="${property}"]`, {
-          element(element) {
-            element.setAttribute('content', content);
-          }
-        });
-      }
-
-      // Ongeza tags zinazokosekana kwenye HTML.
-      rewriter.on('head', {
+      // Ondoa metadata za jumla za NYG CENTER.
+      rewriter.on('meta[property^="og:"]', {
         element(element) {
-          const meta = Object.entries(tags).map(([key, value]) => {
-            const attribute = key.startsWith('twitter:')
-              ? 'name'
-              : 'property';
-
-            const escaped = value.replace(/&/g, '&amp;')
-              .replace(/"/g, '&quot;')
-              .replace(/</g, '&lt;');
-
-            return `<meta ${attribute}="${key}" content="${escaped}">`;
-          }).join('');
-
-          element.append(meta, { html: true });
+          element.remove();
         }
       });
 
+      rewriter.on('meta[name^="twitter:"]', {
+        element(element) {
+          element.remove();
+        }
+      });
+
+      rewriter.on('title', {
+        element(element) {
+          element.setInnerContent(title);
+        }
+      });
+
+      rewriter.on('head', {
+        element(element) {
+          element.append(metadata, { html: true });
+        }
+      });
+
+      // Ondoa sehemu zisizohusu Biography.
+      rewriter.on('body', {
+  element(element) {
+    element.setAttribute('data-nyg-artist', 'nyg-worship');
+  }
+});
+
+      // Sehemu hii itaongezewa Biography maalumu
+      // tutakapokamilisha index.html.
+
       const response = rewriter.transform(assetResponse);
       const headers = new Headers(response.headers);
-      headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+      headers.set('Cache-Control', 'no-cache');
 
       return new Response(response.body, {
         status: response.status,
@@ -521,6 +533,7 @@ export default {
         headers
       });
     }
+
 
     // NYG VIDEO HUB - SOCIAL SHARING
     if (path === '/') {
