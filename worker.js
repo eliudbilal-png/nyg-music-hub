@@ -438,6 +438,90 @@ export default {
       return new Response(object.body, { headers });
     }
 
+    // NYG ARTIST BIOGRAPHY - DEDICATED PAGE & SOCIAL SHARING
+    if (path === '/artist/nyg-worship' ||
+        path === '/artist/nyg-worship/') {
+
+      if (method !== 'GET' && method !== 'HEAD') {
+        return new Response('Method not allowed', {
+          status: 405,
+          headers: { Allow: 'GET, HEAD' }
+        });
+      }
+
+      const pageUrl = new URL('/index.html', request.url);
+      const assetResponse = await env.ASSETS.fetch(
+        new Request(pageUrl, request)
+      );
+
+      if (!assetResponse.ok) return assetResponse;
+
+      const title = 'NYG WORSHIP | Artist Biography';
+      const description =
+        'Fahamu historia, huduma, nyimbo na mafanikio ya NYG WORSHIP kutoka Songea, Tanzania.';
+
+      const imageUrl =
+        'https://nygmusichub.com/nyg-worship-team-management.jpg';
+
+      const shareUrl =
+        'https://nygmusichub.com/artist/nyg-worship';
+
+      const tags = {
+        'og:title': title,
+        'og:description': description,
+        'og:image': imageUrl,
+        'og:url': shareUrl,
+        'og:type': 'article',
+        'twitter:card': 'summary_large_image',
+        'twitter:title': title,
+        'twitter:description': description,
+        'twitter:image': imageUrl
+      };
+
+      const rewriter = new HTMLRewriter();
+
+      for (const [property, content] of Object.entries(tags)) {
+        const attribute = property.startsWith('twitter:')
+          ? 'name'
+          : 'property';
+
+        rewriter.on(`meta[${attribute}="${property}"]`, {
+          element(element) {
+            element.setAttribute('content', content);
+          }
+        });
+      }
+
+      // Ongeza tags zinazokosekana kwenye HTML.
+      rewriter.on('head', {
+        element(element) {
+          const meta = Object.entries(tags).map(([key, value]) => {
+            const attribute = key.startsWith('twitter:')
+              ? 'name'
+              : 'property';
+
+            const escaped = value.replace(/&/g, '&amp;')
+              .replace(/"/g, '&quot;')
+              .replace(/</g, '&lt;');
+
+            return `<meta ${attribute}="${key}" content="${escaped}">`;
+          }).join('');
+
+          element.append(meta, { html: true });
+        }
+      });
+
+      const response = rewriter.transform(assetResponse);
+      const headers = new Headers(response.headers);
+      headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers
+      });
+    }
+
     // NYG VIDEO HUB - SOCIAL SHARING
     if (path === '/') {
       const newUrl = new URL('/index.html', request.url);
