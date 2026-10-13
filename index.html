@@ -1291,7 +1291,7 @@ WASIFU/BIOGRAPH
     status.textContent = 'Audio inapakiwa...';
 
     try {
-      const response = await fetch('/api/testimonies/upload', {
+      fetch('/api/testimonies/admin/upload', {
         method: 'POST',
         credentials: 'same-origin',
         body: new FormData(form)
