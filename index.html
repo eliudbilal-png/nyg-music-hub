@@ -1118,83 +1118,86 @@ WASIFU/BIOGRAPH
       style="width:100%; max-width:700px; display:block; margin:auto; border-radius:16px;"
     >
   </div>
-  <!-- NYG SHUHUDA / TESTIMONIES -->
-<div id="nyg-testimonies"
-     style="background:#10243e;
-            border:1px solid #d4af37;
-            border-radius:14px;
-            padding:15px;
-            margin-top:20px;
-            text-align:left;">
+  
+<!-- NYG SHUHUDA / TESTIMONIES -->
+<div id="nyg-testimonies" style="width:80%;max-width:100%;margin:20px 0;box-sizing:border-box;color:white;text-align:left;">
 
   <h2 style="color:#FFD700;font-size:20px;">
     🙏 SHUHUDA / TESTIMONIES
   </h2>
-
-  <p style="font-size:13px;margin:10px 0;">
-    Karibu kushiriki matendo makuu ya Mungu
-    katika maisha yako ili kuwajenga na
-    kuwatia moyo wengine.
+  <p style="font-size:13px;">
+    Sikiliza matendo makuu ya Mungu katika maisha ya waamini.
   </p>
 
-  <h3 style="color:#69caff;font-size:15px;">
-    SHUHUDA ZA WAAMINI
-  </h3>
+  <div id="nyg-testimonies-list">
 
-  <div id="nyg-testimonies-list"
-       style="background:#07111f;
-              padding:12px;
-              border-radius:10px;
-              margin:10px 0;
-              font-size:13px;">
-    Shuhuda zitakazoidhinishwa zitaonekana hapa.
+    <div style="background:#10243e;border:1px solid #304963;border-radius:12px;padding:12px;margin:10px 0;">
+      <div style="font-weight:bold;font-size:15px;">
+        1. JAMES MJEMA
+      </div>
+      <div style="font-size:12px;color:#cbd5e1;margin:5px 0;">
+        Ameponywa ugonjwa wa kupooza
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+        <button type="button" aria-label="Cheza shuhuda ya kwanza" disabled
+          style="background:#dc2626;color:white;border:2px solid white;border-radius:9px;padding:8px 12px;font-size:19px;opacity:0.7;">
+          ▶️
+        </button>
+        <div style="flex:1;min-width:0;">
+          <div style="height:24px;display:flex;align-items:center;gap:3px;">
+            <span style="color:#38bdf8;letter-spacing:2px;overflow:hidden;white-space:nowrap;">
+              ▁▂▃▅▇▅▃▂▃▆▇▅▃▂▅▇▆▃▂▁
+            </span>
+          </div>
+          <div style="height:4px;background:#475569;border-radius:5px;"></div>
+          <small style="color:#94a3b8;">Audio haijapakiwa</small>
+        </div>
+      </div>
+    </div>
+
   </div>
 
-  <h3 style="color:#FFD700;font-size:15px;">
-    TUMA USHUHUDA WAKO
-  </h3>
+  <!-- PUBLIC COMMENTS -->
+  <div id="nyg-testimony-chat"
+    style="width:65%;max-width:100%;box-sizing:border-box;background:#10243e;border:1px solid #304963;border-radius:12px;padding:12px;margin:20px 0;">
 
-  <input id="nyg-testimony-name"
-         type="text"
-         maxlength="60"
-         placeholder="Jina lako"
-         style="width:100%;padding:10px;
-                margin:8px 0;box-sizing:border-box;">
+    <h3 style="color:#FFD700;font-size:15px;">
+      💬 MAONI YA WAAMINI
+    </h3>
+    <p style="font-size:12px;">
+      Jadili shuhuda kwa kutaja namba yake.
+    </p>
 
-  <textarea id="nyg-testimony-text"
-            maxlength="3000"
-            placeholder="Andika ushuhuda wako..."
-            style="width:100%;min-height:120px;
-                   padding:10px;box-sizing:border-box;
-                   border-radius:8px;"></textarea>
+    <div id="nyg-testimony-comments"
+      style="background:#07111f;border-radius:10px;padding:12px;min-height:130px;font-size:12px;">
+      Maoni yataonekana hapa.
+    </div>
 
-  <p style="font-size:12px;margin:10px 0;">
-    Unaweza pia kutuma ushuhuda kwa sauti.
-  </p>
+    <input id="nyg-comment-name" type="text"
+      maxlength="60" placeholder="Jina lako"
+      style="width:100%;box-sizing:border-box;padding:10px;margin-top:10px;border-radius:8px;">
 
-  <input id="nyg-testimony-audio"
-         type="file"
-         accept="audio/*"
-         style="width:100%;font-size:12px;">
+    <textarea id="nyg-comment-text" maxlength="1000"
+      placeholder="Andika maoni yako, mfano: Shuhuda namba 1..."
+      style="width:100%;box-sizing:border-box;min-height:75px;padding:10px;margin-top:8px;border-radius:8px;"></textarea>
 
-  <button type="button"
-          disabled
-          style="background:#FFD700;color:#111;
-                 border:0;border-radius:8px;
-                 padding:12px 20px;
-                 margin-top:15px;
-                 font-weight:bold;
-                 opacity:0.6;">
-    TUMA USHUHUDA
-  </button>
+    <button type="button" id="nyg-send-comment" disabled
+      style="background:#16a34a;color:white;border:0;border-radius:8px;padding:10px 18px;margin-top:8px;opacity:0.6;">
+      TUMA MAONI ➤
+    </button>
+  </div>
 
-  <p style="font-size:11px;color:#aebbc9;margin-top:8px;">
-    Mfumo wa kutuma shuhuda utawezeshwa
-    baada ya kuunganisha database na API.
-  </p>
+  <!-- ADMIN UPLOAD -->
+  <div style="margin-top:18px;">
+    <button type="button" id="nyg-admin-upload" disabled
+      style="background:#FFD700;color:#111;border:0;border-radius:8px;padding:10px 16px;font-weight:bold;opacity:0.6;">
+      🔒 ADMIN UPLOAD
+    </button>
+  </div>
 
 </div>
 <!-- END NYG SHUHUDA -->
+
 </section>
 
 <section id="highlights">
