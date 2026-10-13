@@ -1187,13 +1187,22 @@ WASIFU/BIOGRAPH
     </button>
   </div>
 
-  <!-- ADMIN UPLOAD -->
-  <div style="margin-top:18px;">
-    <button type="button" id="nyg-admin-upload"
-      style="background:#FFD700;color:#111;border:0;border-radius:8px;padding:10px 16px;font-weight:bold;cursor:pointer;"
-      🔒 ADMIN UPLOAD
-    </button>
-  </div>
+  
+<!-- ADMIN UPLOAD -->
+<div style="margin-top:18px;">
+  <button type="button" id="nyg-admin-upload"
+    style="background:#FFD700;color:#111;border:0;border-radius:8px;padding:10px 16px;font-weight:bold;cursor:pointer;">
+    🔒 ADMIN UPLOAD
+  </button>
+</div>
+
+<script>
+document.getElementById('nyg-admin-upload')
+  .addEventListener('click', function () {
+    window.location.href = '/admin';
+  });
+</script>
+
 
 </div>
 <!-- END NYG SHUHUDA -->
