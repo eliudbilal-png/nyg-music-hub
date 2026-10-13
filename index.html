@@ -1196,12 +1196,124 @@ WASIFU/BIOGRAPH
   </button>
 </div>
 
+
+<!-- NYG SHUHUDA ADMIN PANEL -->
+<div id="nyg-admin-panel"
+     style="display:none;margin-top:15px;padding:15px;background:#10243d;border-radius:10px;color:white;">
+
+  <h3 style="color:#FFD700;">ADMIN - SHUHUDA</h3>
+
+  <div id="nyg-login-box">
+    <input id="nyg-admin-code" type="password"
+      placeholder="Admin Access Code"
+      autocomplete="off"
+      style="width:100%;box-sizing:border-box;padding:12px;margin-bottom:10px;">
+
+    <button type="button" id="nyg-login-btn">
+      INGIA ADMIN
+    </button>
+  </div>
+
+  <form id="nyg-upload-form" style="display:none;margin-top:15px;">
+    <input name="witness_name" required maxlength="100"
+      placeholder="Jina la mtoa shuhuda"
+      style="width:100%;box-sizing:border-box;padding:12px;margin-bottom:10px;">
+
+    <textarea name="testimony_text" required maxlength="1000"
+      placeholder="Maelezo ya shuhuda"
+      style="width:100%;box-sizing:border-box;padding:12px;margin-bottom:10px;"></textarea>
+
+    <input name="audio" type="file" required
+      accept=".mp3,.m4a,.wav,.ogg,.webm,audio/*"
+      style="width:100%;margin-bottom:12px;">
+
+    <button type="submit" id="nyg-upload-btn">
+      PAKIA SHUHUDA
+    </button>
+  </form>
+
+  <p id="nyg-admin-status" role="status"></p>
+</div>
+
 <script>
-document.getElementById('nyg-admin-upload')
-  .addEventListener('click', function () {
-    window.location.href = '/admin';
+(() => {
+  const button = document.getElementById('nyg-admin-upload');
+  const panel = document.getElementById('nyg-admin-panel');
+  const loginBox = document.getElementById('nyg-login-box');
+  const form = document.getElementById('nyg-upload-form');
+  const status = document.getElementById('nyg-admin-status');
+  const loginBtn = document.getElementById('nyg-login-btn');
+  const uploadBtn = document.getElementById('nyg-upload-btn');
+
+  button.addEventListener('click', () => {
+    panel.style.display =
+      panel.style.display === 'none' ? 'block' : 'none';
   });
+
+  loginBtn.addEventListener('click', async () => {
+    const code = document.getElementById('nyg-admin-code').value;
+    if (!code) {
+      status.textContent = 'Weka Admin Access Code.';
+      return;
+    }
+
+    loginBtn.disabled = true;
+    status.textContent = 'Inaingia...';
+
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || 'Login imeshindikana.');
+      }
+
+      document.getElementById('nyg-admin-code').value = '';
+      loginBox.style.display = 'none';
+      form.style.display = 'block';
+      status.textContent = 'Umeingia kama Admin.';
+    } catch (error) {
+      status.textContent = error.message;
+    } finally {
+      loginBtn.disabled = false;
+    }
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    uploadBtn.disabled = true;
+    status.textContent = 'Audio inapakiwa...';
+
+    try {
+      const response = await fetch('/api/testimonies/upload', {
+        method: 'POST',
+        credentials: 'same-origin',
+        body: new FormData(form)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Upload imeshindikana.');
+      }
+
+      status.textContent = 'Shuhuda imehifadhiwa!';
+      form.reset();
+    } catch (error) {
+      status.textContent = error.message;
+    } finally {
+      uploadBtn.disabled = false;
+    }
+  });
+})();
 </script>
+
 
 
 </div>
