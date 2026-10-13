@@ -253,6 +253,61 @@ await env.DB.batch([
     }
 
     // ADMIN LOGIN
+    // NYG SHUHUDA - PUBLIC TESTIMONIES
+    if (path === '/api/testimonies' && method === 'GET') {
+      if (!env.TESTIMONIES_DB) {
+        return reply({ error: 'Testimonies database haijaunganishwa.' }, 503);
+      }
+
+      try {
+        const result = await env.TESTIMONIES_DB.prepare(`
+          SELECT id, testimony_number, witness_name,
+                 testimony_text, audio_key, created_at
+          FROM nyg_testimonies
+          WHERE status = 'approved'
+          ORDER BY id DESC
+          LIMIT 50
+        `).all();
+
+        return reply({ testimonies: result.results || [] });
+      } catch (error) {
+        console.error('NYG testimonies error', error);
+        return reply({ error: 'Shuhuda hazijapatikana.' }, 500);
+      }
+    }
+
+    // NYG SHUHUDA - PUBLIC COMMENTS
+    if (path === '/api/testimonies/comments' && method === 'GET') {
+      if (!env.TESTIMONIES_DB) {
+        return reply({ error: 'Testimonies database haijaunganishwa.' }, 503);
+      }
+
+      const testimonyId = Number(url.searchParams.get('testimony_id'));
+
+      if (!Number.isSafeInteger(testimonyId) || testimonyId <= 0) {
+        return reply({ error: 'Invalid testimony ID' }, 400);
+      }
+
+      try {
+        const result = await env.TESTIMONIES_DB.prepare(`
+          SELECT c.id, c.commenter_name, c.comment_text, c.created_at
+          FROM nyg_testimony_comments c
+          JOIN nyg_testimonies t ON t.id = c.testimony_id
+          WHERE c.testimony_id = ?
+            AND c.status = 'approved'
+            AND t.status = 'approved'
+          ORDER BY c.id DESC
+          LIMIT 100
+        `).bind(testimonyId).all();
+
+        return reply({ comments: result.results || [] });
+      } catch (error) {
+        console.error('NYG testimony comments error', error);
+        return reply({ error: 'Comments hazijapatikana.' }, 500);
+      }
+    }
+    
+    
     if (path === '/api/admin/login' && method === 'POST') {
       if (!sameOrigin(request, url)) {
         return reply({ error: 'Forbidden origin' }, 403);
