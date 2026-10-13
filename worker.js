@@ -402,6 +402,62 @@ if (path === '/api/testimonies/comments' && method === 'POST') {
     }
 
     // PROTECTED ADMIN APIs
+    // NYG SHUHUDA - PUBLIC AUDIO PLAYBACK
+if (path.startsWith('/api/testimonies/audio/') &&
+    (method === 'GET' || method === 'HEAD')) {
+
+  if (!env.TESTIMONIES_DB || !env.TESTIMONIES_BUCKET) {
+    return reply({
+      error: 'Audio storage haijaunganishwa.'
+    }, 503);
+  }
+
+  const testimonyId = Number(
+    path.slice('/api/testimonies/audio/'.length)
+  );
+
+  if (!Number.isSafeInteger(testimonyId) || testimonyId < 1) {
+    return reply({ error: 'Invalid testimony ID' }, 400);
+  }
+
+  try {
+    const testimony = await env.TESTIMONIES_DB.prepare(`
+      SELECT audio_key
+      FROM nyg_testimonies
+      WHERE id = ? AND status = 'approved'
+    `).bind(testimonyId).first();
+
+    if (!testimony?.audio_key) {
+      return reply({ error: 'Audio haijapatikana.' }, 404);
+    }
+
+    const audio = await env.TESTIMONIES_BUCKET.get(
+      testimony.audio_key
+    );
+
+    if (!audio) {
+      return reply({ error: 'Audio haijapatikana R2.' }, 404);
+    }
+
+    const headers = new Headers();
+    audio.writeHttpMetadata(headers);
+    headers.set('Content-Type',
+      headers.get('Content-Type') || 'audio/mpeg');
+    headers.set('Cache-Control', 'private, no-store');
+    headers.set('Accept-Ranges', 'none');
+
+    return new Response(
+      method === 'HEAD' ? null : audio.body,
+      { status: 200, headers }
+    );
+
+  } catch (error) {
+    console.error('NYG testimony audio error:', error);
+    return reply({
+      error: 'Imeshindikana kufungua audio.'
+    }, 500);
+  }
+}
     if (path.startsWith('/api/')) {
       if (!await sessionValid(request, env)) {
         return reply({ error: 'Tafadhali ingia kama admin.' }, 401);
