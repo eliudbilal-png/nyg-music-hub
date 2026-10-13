@@ -410,7 +410,44 @@ if (path === '/api/testimonies/comments' && method === 'POST') {
       if (method === 'POST' && !sameOrigin(request, url)) {
         return reply({ error: 'Forbidden origin' }, 403);
       }
+// NYG SHUHUDA - ADMIN DELETE COMMENT
+if (path === '/api/testimonies/admin/delete-comment' &&
+    method === 'POST') {
 
+  if (!sameOrigin(request, url)) {
+    return reply({ error: 'Forbidden origin' }, 403);
+  }
+
+  if (!env.TESTIMONIES_DB) {
+    return reply({ error: 'Database haijaunganishwa.' }, 503);
+  }
+
+  const body = await request.json().catch(() => null);
+  const commentId = body?.comment_id;
+
+  if (!Number.isSafeInteger(commentId) || commentId < 1) {
+    return reply({ error: 'Comment ID si sahihi.' }, 400);
+  }
+
+  try {
+    const result = await env.TESTIMONIES_DB.prepare(
+      'DELETE FROM nyg_testimony_comments WHERE id = ?'
+    ).bind(commentId).run();
+
+    if (result.meta?.changes !== 1) {
+      return reply({ error: 'Comment haijapatikana.' }, 404);
+    }
+
+    return reply({
+      success: true,
+      message: 'Comment imefutwa.'
+    });
+
+  } catch (error) {
+    console.error('NYG testimony delete error', error);
+    return reply({ error: 'Imeshindikana kufuta comment.' }, 500);
+  }
+}
       // CLICKPESA TEST
       if (path === '/api/clickpesa/test' && method === 'POST') {
         try {
