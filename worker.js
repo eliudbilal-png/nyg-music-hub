@@ -410,6 +410,109 @@ if (path === '/api/testimonies/comments' && method === 'POST') {
       if (method === 'POST' && !sameOrigin(request, url)) {
         return reply({ error: 'Forbidden origin' }, 403);
       }
+  // NYG SHUHUDA - ADMIN AUDIO UPLOAD
+if (path === '/api/testimonies/admin/upload' &&
+    method === 'POST') {
+
+  if (!env.TESTIMONIES_DB || !env.TESTIMONIES_BUCKET) {
+    return reply({
+      error: 'Database au Audio Storage haijaunganishwa.'
+    }, 503);
+  }
+
+  const maxSize = 25 * 1024 * 1024;
+  const length = Number(
+    request.headers.get('content-length') || 0
+  );
+
+  if (length > maxSize + 10000) {
+    return reply({ error: 'Audio imezidi MB 25.' }, 413);
+  }
+
+  const form = await request.formData().catch(() => null);
+
+  if (!form) {
+    return reply({ error: 'Fomu si sahihi.' }, 400);
+  }
+
+  const name = String(form.get('witness_name') || '').trim();
+  const description = String(
+    form.get('testimony_text') || ''
+  ).trim();
+
+  const file = form.get('audio');
+
+  if (!name || name.length > 100 ||
+      !description || description.length > 1000 ||
+      !file || typeof file.arrayBuffer !== 'function') {
+    return reply({
+      error: 'Weka jina, maelezo na audio ya shuhuda.'
+    }, 400);
+  }
+
+  const formats = {
+    'audio/mpeg': 'mp3',
+    'audio/mp4': 'm4a',
+    'audio/wav': 'wav',
+    'audio/x-wav': 'wav',
+    'audio/ogg': 'ogg',
+    'audio/webm': 'webm'
+  };
+
+  const type = file.type.toLowerCase();
+  const extension = formats[type];
+
+  if (!extension) {
+    return reply({
+      error: 'Tumia MP3, M4A, WAV, OGG au WebM.'
+    }, 415);
+  }
+
+  if (file.size === 0 || file.size > maxSize) {
+    return reply({
+      error: 'Audio iwe na ukubwa usiozidi MB 25.'
+    }, 413);
+  }
+
+  const audio = await file.arrayBuffer();
+
+  if (audio.byteLength > maxSize) {
+    return reply({ error: 'Audio imezidi MB 25.' }, 413);
+  }
+
+  const key = `testimonies/${crypto.randomUUID()}.${extension}`;
+
+  try {
+    await env.TESTIMONIES_BUCKET.put(key, audio, {
+      httpMetadata: { contentType: type }
+    });
+
+    const result = await env.TESTIMONIES_DB.prepare(`
+      INSERT INTO nyg_testimonies
+      (witness_name, testimony_text, audio_key, status)
+      VALUES (?, ?, ?, 'approved')
+    `).bind(name, description, key).run();
+
+    return reply({
+      success: true,
+      id: result.meta?.last_row_id,
+      message: 'Audio ya shuhuda imehifadhiwa.'
+    }, 201);
+
+  } catch (error) {
+    console.error('NYG testimony upload:', error);
+
+    await env.TESTIMONIES_BUCKET.delete(key).catch(
+      cleanupError => console.error(
+        'Audio cleanup failed:', cleanupError
+      )
+    );
+
+    return reply({
+      error: 'Imeshindikana kuhifadhi shuhuda.'
+    }, 500);
+  }
+}    
 // NYG SHUHUDA - ADMIN DELETE COMMENT
 if (path === '/api/testimonies/admin/delete-comment' &&
     method === 'POST') {
