@@ -306,7 +306,63 @@ await env.DB.batch([
         return reply({ error: 'Comments hazijapatikana.' }, 500);
       }
     }
-    
+  // NYG SHUHUDA - PUBLIC COMMENT SUBMISSION
+if (path === '/api/testimonies/comments' && method === 'POST') {
+  if (!sameOrigin(request, url)) {
+    return reply({ error: 'Forbidden origin' }, 403);
+  }
+
+  if (!env.TESTIMONIES_DB) {
+    return reply({ error: 'Database haijaunganishwa.' }, 503);
+  }
+
+  const length = Number(request.headers.get('content-length') || 0);
+  if (length > 4096) {
+    return reply({ error: 'Maoni ni makubwa sana.' }, 413);
+  }
+
+  const body = await request.json().catch(() => null);
+
+  const testimonyId = body?.testimony_id;
+  const name = typeof body?.commenter_name === 'string'
+    ? body.commenter_name.trim() : '';
+  const comment = typeof body?.comment_text === 'string'
+    ? body.comment_text.trim() : '';
+
+  if (!Number.isSafeInteger(testimonyId) || testimonyId < 1 ||
+      name.length < 2 || name.length > 60 ||
+      comment.length < 2 || comment.length > 1000) {
+    return reply({ error: 'Taarifa za comment si sahihi.' }, 400);
+  }
+
+  if (/[\u0000-\u001f\u007f]/.test(name) ||
+      /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(comment)) {
+    return reply({ error: 'Maandishi yana alama zisizoruhusiwa.' }, 400);
+  }
+
+  try {
+    const result = await env.TESTIMONIES_DB.prepare(`
+      INSERT INTO nyg_testimony_comments
+      (testimony_id, commenter_name, comment_text, status)
+      SELECT id, ?, ?, 'pending'
+      FROM nyg_testimonies
+      WHERE id = ? AND status = 'approved'
+    `).bind(name, comment, testimonyId).run();
+
+    if (result.meta?.changes !== 1) {
+      return reply({ error: 'Shuhuda haijapatikana.' }, 404);
+    }
+
+    return reply({
+      success: true,
+      message: 'Asante! Maoni yako yamepokelewa na yanasubiri idhini ya Admin.'
+    }, 201);
+
+  } catch (error) {
+    console.error('NYG testimony submission error', error);
+    return reply({ error: 'Imeshindikana kuhifadhi maoni.' }, 500);
+  }
+}  
     
     if (path === '/api/admin/login' && method === 'POST') {
       if (!sameOrigin(request, url)) {
