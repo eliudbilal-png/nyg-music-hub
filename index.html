@@ -2031,6 +2031,79 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 </script>
+  
+<!-- NYG SHUHUDA AUDIO PLAYER -->
+<script>
+(function () {
+  "use strict";
+
+  const list = document.getElementById("nyg-testimonies-list");
+  if (!list) return;
+
+  let activeAudio = null;
+  let activeButton = null;
+
+  function stopCurrentAudio() {
+    if (activeAudio) {
+      activeAudio.pause();
+      activeAudio.currentTime = 0;
+    }
+
+    if (activeButton) {
+      activeButton.textContent = "▶️";
+      activeButton.setAttribute("aria-label", "Cheza shuhuda");
+    }
+
+    activeAudio = null;
+    activeButton = null;
+  }
+
+  list.addEventListener("click", async function (event) {
+    const button = event.target.closest(
+      "button[data-audio-url]"
+    );
+
+    if (!button || button.disabled) return;
+
+    const url = button.dataset.audioUrl;
+    if (!url) return;
+
+    if (activeButton === button) {
+      if (activeAudio.paused) {
+        try {
+          await activeAudio.play();
+          button.textContent = "⏸️";
+        } catch (error) {
+          console.error("Audio haijachezwa:", error);
+        }
+      } else {
+        activeAudio.pause();
+        button.textContent = "▶️";
+      }
+      return;
+    }
+
+    stopCurrentAudio();
+
+    const audio = new Audio(url);
+    activeAudio = audio;
+    activeButton = button;
+
+    audio.addEventListener("ended", stopCurrentAudio);
+
+    try {
+      await audio.play();
+      button.textContent = "⏸️";
+      button.setAttribute("aria-label", "Simamisha shuhuda");
+    } catch (error) {
+      console.error("Audio haijachezwa:", error);
+      stopCurrentAudio();
+    }
+  });
+})();
+</script>
+<!-- END NYG SHUHUDA AUDIO PLAYER -->
+
 </body>
 </html>
   
