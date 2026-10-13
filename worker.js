@@ -344,7 +344,7 @@ if (path === '/api/testimonies/comments' && method === 'POST') {
     const result = await env.TESTIMONIES_DB.prepare(`
       INSERT INTO nyg_testimony_comments
       (testimony_id, commenter_name, comment_text, status)
-      SELECT id, ?, ?, 'pending'
+      SELECT id, ?, ?, 'approved'
       FROM nyg_testimonies
       WHERE id = ? AND status = 'approved'
     `).bind(name, comment, testimonyId).run();
