@@ -22,6 +22,46 @@ h2{color:#FFD700;font-size:21px}
 .btn:hover{background:#e6c200}
 .muted{color:#b9c5d4}
 footer{text-align:center;padding:30px 15px;color:#b9c5d4;font-size:13px}
+  /* NYG FRIENDS — SIGN UP FORM */
+#nyg-signup {
+  background: #112744;
+  border: 1px solid #315579;
+  border-radius: 14px;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+#nyg-signup label {
+  display: block;
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+  margin: 14px 0 6px;
+}
+
+#nyg-signup input:not([type="checkbox"]) {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #8295aa;
+  border-radius: 8px;
+  background: white;
+  color: #071426;
+  font-size: 14px;
+}
+
+#nyg-signup input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+#nyg-signup .btn {
+  width: 100%;
+  margin-top: 16px;
+  text-align: center;
+}
 </style>
 </head>
 <body>
@@ -36,10 +76,50 @@ footer{text-align:center;padding:30px 15px;color:#b9c5d4;font-size:13px}
 <div class="intro">
 <h2>KARIBU NYG MARKET PLACE</h2>
 <p>Ungana nasi kupata fursa za kazi, taarifa na programu za NYG FRIENDS.</p>
-<button class="btn" type="button" disabled
-style="opacity:.65;cursor:not-allowed">
-SIGN UP — JIUNGE NASI (SOON)
+
+<button class="btn" type="button"
+onclick="document.getElementById('nyg-signup').hidden=false;this.hidden=true;">
+SIGN UP — JIUNGE NASI
 </button>
+
+<div id="nyg-signup" hidden
+style="max-width:420px;margin:25px auto;padding:22px;background:#112744;border:1px solid #315579;border-radius:14px;text-align:left;">
+
+<h3 style="color:#FFD700;text-align:center;">JIUNGE NA NYG FRIENDS</h3>
+
+<form id="nyg-signup-form">
+<label for="nyg-name">Jina kamili</label>
+<input id="nyg-name" type="text" required maxlength="100"
+placeholder="Mf. Maria Joseph Kiria"
+autocomplete="name">
+
+<label for="nyg-email">Barua pepe</label>
+<input id="nyg-email" type="email" required
+autocomplete="email" placeholder="Email yako">
+
+<label for="nyg-password">Password</label>
+<input id="nyg-password" type="password" required minlength="8"
+autocomplete="new-password" placeholder="Angalau herufi 8">
+
+<label for="nyg-confirm">Thibitisha password</label>
+<input id="nyg-confirm" type="password" required minlength="8"
+autocomplete="new-password" placeholder="Rudia password">
+
+<label style="display:flex;gap:10px;align-items:flex-start;">
+<input type="checkbox" required style="width:auto;margin:3px 0;">
+<span>Nimekubali Masharti ya Matumizi na Sera ya Faragha.</span>
+</label>
+
+<p id="nyg-signup-message" role="status"
+style="color:#FFD700;font-size:13px;"></p>
+
+<button class="btn" type="submit" disabled
+style="opacity:.65;cursor:not-allowed;">
+TENGENEZA AKAUNTI (IN PREPARATION)
+</button>
+</form>
+</div>
+
 </div>
 
 <div class="grid">
