@@ -2402,6 +2402,100 @@ updatePlayer();
 </script>
 <!-- END NYG SHUHUDA AUDIO PLAYER -->
 
+<!-- NYG SHUHUDA GROUP CHAT -->
+<script>
+(function () {
+  "use strict";
+
+  const box = document.getElementById('nyg-testimony-comments');
+  const nameInput = document.getElementById('nyg-testimony-comment-name');
+  const textInput = document.getElementById('nyg-testimony-comment-text');
+  const sendBtn = document.getElementById('nyg-send-comment');
+
+  if (!box || !nameInput || !textInput || !sendBtn) return;
+
+  const endpoint = '/api/testimonies/comments';
+
+  async function loadComments() {
+    try {
+      const response = await fetch(endpoint, { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Tatizo la mtandao');
+
+      box.replaceChildren();
+      const comments = Array.isArray(data.comments) ? data.comments : [];
+
+      if (!comments.length) {
+        box.textContent = 'Hakuna maoni bado. Karibu uandike maoni ya kwanza.';
+        return;
+      }
+
+      comments.reverse().forEach(item => {
+        const message = document.createElement('div');
+        message.style.cssText =
+          'background:#16324a;color:white;padding:9px;margin:7px 0;border-radius:10px;overflow-wrap:anywhere;';
+
+        const name = document.createElement('strong');
+        name.textContent = item.commenter_name || 'Mgeni';
+
+        const text = document.createElement('div');
+        text.textContent = item.comment_text || '';
+        text.style.marginTop = '4px';
+
+        const time = document.createElement('small');
+        time.textContent = item.created_at || '';
+        time.style.cssText = 'color:#b9c9d6;font-size:11px;';
+
+        message.append(name, text, time);
+        box.appendChild(message);
+      });
+    } catch (error) {
+      box.textContent = 'Imeshindikana kupakia maoni: ' + error.message;
+    }
+  }
+
+  sendBtn.addEventListener('click', async () => {
+    const name = nameInput.value.trim();
+    const comment = textInput.value.trim();
+
+    if (name.length < 2 || name.length > 60 ||
+        comment.length < 2 || comment.length > 1000) {
+      alert('Jina liwe herufi 2–60 na maoni herufi 2–1000.');
+      return;
+    }
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'INATUMA...';
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commenter_name: name,
+          comment_text: comment
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Imeshindikana kutuma.');
+
+      textInput.value = '';
+      await loadComments();
+      alert(data.message || 'Maoni yametumwa.');
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'TUMA MAONI ➤';
+    }
+  });
+
+  loadComments();
+})();
+</script>
+<!-- END NYG SHUHUDA GROUP CHAT -->
+
 </body>
 </html>
   
