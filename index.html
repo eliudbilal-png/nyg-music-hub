@@ -2406,7 +2406,24 @@ updatePlayer();
 <script>
 (function () {
   "use strict";
+let isNYGAdmin = false;
 
+async function checkNYGAdmin() {
+  try {
+    const response = await fetch(
+      '/api/testimonies/admin/session',
+      { credentials: 'same-origin', cache: 'no-store' }
+    );
+
+    if (!response.ok) return false;
+
+    const data = await response.json();
+    return data.authenticated === true;
+  } catch (error) {
+    console.error('Admin session check:', error);
+    return false;
+  }
+}
   const box = document.getElementById('nyg-testimony-comments');
   const nameInput = document.getElementById('nyg-testimony-comment-name');
   const textInput = document.getElementById('nyg-testimony-comment-text');
@@ -2418,6 +2435,7 @@ updatePlayer();
 
   async function loadComments() {
     try {
+      isNYGAdmin = await checkNYGAdmin();
       const response = await fetch(endpoint, { cache: 'no-store' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Tatizo la mtandao');
@@ -2447,7 +2465,58 @@ updatePlayer();
         time.style.cssText = 'color:#b9c9d6;font-size:11px;';
 
         message.append(name, text, time);
-        box.appendChild(message);
+
+if (isNYGAdmin && Number.isSafeInteger(Number(item.id))) {
+  const deleteBtn = document.createElement('button');
+  deleteBtn.type = 'button';
+  deleteBtn.textContent = '🗑️ Futa';
+  deleteBtn.style.cssText =
+    'display:block;margin-top:8px;padding:6px 12px;' +
+    'background:#b91c1c;color:white;border:0;' +
+    'border-radius:6px;cursor:pointer;font-size:12px;';
+
+  deleteBtn.addEventListener('click', async () => {
+    if (!confirm('Una uhakika unataka kufuta comment hii?')) {
+      return;
+    }
+
+    deleteBtn.disabled = true;
+    deleteBtn.textContent = 'Inafuta...';
+
+    try {
+      const response = await fetch(
+        '/api/testimonies/admin/delete-comment',
+        {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            comment_id: Number(item.id)
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Imeshindikana kufuta.');
+      }
+
+      await loadComments();
+
+    } catch (error) {
+      alert(error.message);
+      deleteBtn.disabled = false;
+      deleteBtn.textContent = '🗑️ Futa';
+    }
+  });
+
+  message.appendChild(deleteBtn);
+}
+
+box.appendChild(message);
       });
     } catch (error) {
       box.textContent = 'Imeshindikana kupakia maoni: ' + error.message;
