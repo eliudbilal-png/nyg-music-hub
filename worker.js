@@ -286,7 +286,7 @@ await env.DB.batch([
     try {
       const result = await env.TESTIMONIES_DB.prepare(`
         SELECT id, commenter_name, comment_text, created_at
-        FROM nyg_testimony_comments
+        FROM nyg_testimony_group_comments
         WHERE status = 'approved'
         ORDER BY id DESC
         LIMIT 100
@@ -316,39 +316,35 @@ if (path === '/api/testimonies/comments' && method === 'POST') {
 
   const body = await request.json().catch(() => null);
 
-  const testimonyId = body?.testimony_id;
   const name = typeof body?.commenter_name === 'string'
     ? body.commenter_name.trim() : '';
   const comment = typeof body?.comment_text === 'string'
     ? body.comment_text.trim() : '';
+  
+if (
+  name.length < 2 || name.length > 60 ||
+  comment.length < 2 || comment.length > 1000
+) {
+  return reply({ error: 'Taarifa za comment si sahihi.' }, 400);
+}
 
-  if (!Number.isSafeInteger(testimonyId) || testimonyId < 1 ||
-      name.length < 2 || name.length > 60 ||
-      comment.length < 2 || comment.length > 1000) {
-    return reply({ error: 'Taarifa za comment si sahihi.' }, 400);
-  }
 
   if (/[\u0000-\u001f\u007f]/.test(name) ||
       /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(comment)) {
     return reply({ error: 'Maandishi yana alama zisizoruhusiwa.' }, 400);
   }
 
-  try {
-    const result = await env.TESTIMONIES_DB.prepare(`
-      INSERT INTO nyg_testimony_comments
-      (testimony_id, commenter_name, comment_text, status)
-      SELECT id, ?, ?, 'approved'
-      FROM nyg_testimonies
-      WHERE id = ? AND status = 'approved'
-    `).bind(name, comment, testimonyId).run();
-
-    if (result.meta?.changes !== 1) {
-      return reply({ error: 'Shuhuda haijapatikana.' }, 404);
-    }
+  
+try {
+  await env.TESTIMONIES_DB.prepare(`
+    INSERT INTO nyg_testimony_group_comments
+    (commenter_name, comment_text, status)
+    VALUES (?, ?, 'approved')
+  `).bind(name, comment).run();
 
     return reply({
       success: true,
-      message: 'Asante! Maoni yako yamepokelewa na yanasubiri idhini ya Admin.'
+      message: 'Asante! Maoni yako yamechapishwa kwenye NYG SHUHUDA.'
     }, 201);
 
   } catch (error) {
