@@ -2139,6 +2139,57 @@ document.addEventListener("DOMContentLoaded", () => {
   const list = document.getElementById("nyg-testimonies-list");
   if (!list) return;
 
+async function loadNYGTestimonies() {
+  try {
+    const response = await fetch('/api/testimonies');
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+
+    const data = await response.json();
+    const testimonies = Array.isArray(data.testimonies)
+      ? data.testimonies : [];
+
+    list.replaceChildren();
+
+    if (testimonies.length === 0) {
+      list.textContent = 'Hakuna shuhuda kwa sasa.';
+      return;
+    }
+
+    testimonies.forEach(item => {
+      const card = document.createElement('div');
+      card.style.cssText =
+        'background:#10243e;padding:12px;margin:10px 0;' +
+        'border-radius:10px;color:white;';
+
+      const heading = document.createElement('div');
+      heading.style.cssText = 'font-weight:bold;margin-bottom:8px;';
+      heading.textContent =
+        (item.testimony_number ?? item.id) + '. ' +
+        (item.witness_name || 'Mtoa shuhuda');
+
+      const description = document.createElement('p');
+      description.textContent = item.testimony_text || '';
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = '▶️';
+      button.dataset.audioUrl = '/api/testimonies/audio/' + item.id;
+      button.setAttribute('aria-label', 'Cheza shuhuda');
+      button.style.cssText =
+        'background:#FFD700;border:0;border-radius:6px;' +
+        'padding:8px 14px;cursor:pointer;';
+
+      card.append(heading, description, button);
+      list.appendChild(card);
+    });
+  } catch (error) {
+    console.error('NYG Testimonies:', error);
+    list.textContent = 'Imeshindikana kupakia shuhuda.';
+  }
+}
+
+loadNYGTestimonies();
+
   let activeAudio = null;
   let activeButton = null;
 
