@@ -2170,16 +2170,62 @@ async function loadNYGTestimonies() {
       const description = document.createElement('p');
       description.textContent = item.testimony_text || '';
 
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = '▶️';
-      button.dataset.audioUrl = '/api/testimonies/audio/' + item.id;
-      button.setAttribute('aria-label', 'Cheza shuhuda');
-      button.style.cssText =
-        'background:#FFD700;border:0;border-radius:6px;' +
-        'padding:8px 14px;cursor:pointer;';
+      
+const player = document.createElement('div');
+player.className = 'nyg-premium-player';
+player.style.cssText =
+  'background:#0b1120;border:1px solid #26364d;' +
+  'border-radius:14px;padding:16px;margin-top:12px;';
 
-      card.append(heading, description, button);
+const wave = document.createElement('div');
+wave.className = 'nyg-waveform';
+wave.style.cssText =
+  'display:flex;align-items:center;gap:3px;height:52px;' +
+  'overflow:hidden;margin-bottom:10px;';
+
+for (let i = 0; i < 48; i++) {
+  const bar = document.createElement('span');
+  const height = 8 + Math.abs(Math.sin(i * 0.67) * 38);
+  bar.style.cssText =
+    'width:3px;min-width:3px;height:' + height + 'px;' +
+    'border-radius:3px;background:#32c5f4;opacity:.8;';
+  wave.appendChild(bar);
+}
+
+const progress = document.createElement('input');
+progress.type = 'range';
+progress.min = '0';
+progress.max = '100';
+progress.value = '0';
+progress.className = 'nyg-audio-progress';
+progress.style.cssText =
+  'width:100%;accent-color:#32c5f4;cursor:pointer;';
+
+const controls = document.createElement('div');
+controls.style.cssText =
+  'display:flex;align-items:center;justify-content:space-between;' +
+  'gap:12px;margin-top:10px;';
+
+const timer = document.createElement('span');
+timer.className = 'nyg-audio-time';
+timer.textContent = '0:00 / 0:00';
+timer.style.cssText = 'color:#cbd5e1;font-size:12px;';
+
+const button = document.createElement('button');
+button.type = 'button';
+button.textContent = '▶';
+button.dataset.audioUrl = '/api/testimonies/audio/' + item.id;
+button.setAttribute('aria-label', 'Cheza shuhuda');
+button.style.cssText =
+  'background:linear-gradient(135deg,#22d3ee,#8b5cf6);' +
+  'color:white;border:0;border-radius:12px;' +
+  'width:52px;height:52px;font-size:23px;cursor:pointer;' +
+  'box-shadow:0 0 15px #22d3ee55;';
+
+controls.append(timer, button);
+player.append(wave, progress, controls);
+card.append(heading, description, player);
+
       list.appendChild(card);
     });
   } catch (error) {
@@ -2238,6 +2284,49 @@ loadNYGTestimonies();
     const audio = new Audio(url);
     activeAudio = audio;
     activeButton = button;
+
+const player = button.closest('.nyg-premium-player');
+const progress = player.querySelector('.nyg-audio-progress');
+const timer = player.querySelector('.nyg-audio-time');
+const bars = [...player.querySelectorAll('.nyg-waveform span')];
+
+const formatTime = (seconds) => {
+  if (!Number.isFinite(seconds)) return '0:00';
+  const s = Math.floor(seconds);
+  return Math.floor(s / 60) + ':' +
+    String(s % 60).padStart(2, '0');
+};
+
+function updatePlayer() {
+  const duration = Number.isFinite(audio.duration)
+    ? audio.duration : 0;
+  const current = audio.currentTime || 0;
+  const percent = duration > 0
+    ? Math.min(100, current / duration * 100) : 0;
+
+  progress.value = String(percent);
+  timer.textContent =
+    formatTime(current) + ' / ' + formatTime(duration);
+
+  bars.forEach((bar, i) => {
+    bar.style.opacity =
+      i / bars.length * 100 <= percent ? '1' : '.25';
+  });
+}
+
+audio.addEventListener('loadedmetadata', updatePlayer);
+audio.addEventListener('durationchange', updatePlayer);
+audio.addEventListener('timeupdate', updatePlayer);
+audio.addEventListener('seeked', updatePlayer);
+
+progress.addEventListener('input', () => {
+  if (Number.isFinite(audio.duration) && audio.duration > 0) {
+    audio.currentTime =
+      Number(progress.value) / 100 * audio.duration;
+  }
+});
+
+updatePlayer();
 
     audio.addEventListener("ended", stopCurrentAudio);
 
