@@ -6,12 +6,16 @@
     "directory": ".",
     "binding": "ASSETS"
   },
-  "r2_buckets": [
-    {
-      "binding": "MUSIC_BUCKET",
-      "bucket_name": "nyg-music-store"
-    }
-  ],
+"r2_buckets": [
+  {
+    "binding": "MUSIC_BUCKET",
+    "bucket_name": "nyg-music-store"
+  },
+  {
+    "binding": "TESTIMONIES_BUCKET",
+    "bucket_name": "nyg-testimonies-audio"
+  }
+],
 "d1_databases": [
   {
     "binding": "DB",
