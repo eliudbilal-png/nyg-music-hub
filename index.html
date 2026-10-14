@@ -1263,24 +1263,52 @@ WASIFU/BIOGRAPH
     }
   });
 
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    uploadBtn.disabled = true;
-    status.textContent = 'Audio inapakiwa...';
+  
+form.addEventListener('submit', (event) => {
+  event.preventDefault();
 
+  uploadBtn.disabled = true;
+  status.textContent = 'Inapakia audio... 0%';
+
+  const xhr = new XMLHttpRequest();
+
+  xhr.open('POST', '/api/testimonies/admin/upload');
+  xhr.withCredentials = true;
+
+  const progressBox = document.createElement('div');
+  progressBox.style.cssText =
+    'width:100%;height:12px;background:#26364d;' +
+    'border-radius:10px;overflow:hidden;margin-top:10px;';
+
+  const progressBar = document.createElement('div');
+  progressBar.style.cssText =
+    'width:0%;height:100%;background:linear-gradient(90deg,#00c6ff,#7c3aed);' +
+    'transition:width .2s;';
+
+  progressBox.appendChild(progressBar);
+  status.insertAdjacentElement('afterend', progressBox);
+
+  xhr.upload.addEventListener('progress', (e) => {
+    if (e.lengthComputable) {
+      const percent = Math.round((e.loaded / e.total) * 100);
+      progressBar.style.width = percent + '%';
+      status.textContent = percent < 100
+        ? 'Inapakia audio... ' + percent + '%'
+        : 'Imetumwa 100%. Inahifadhiwa...';
+    } else {
+      status.textContent = 'Inapakia audio...';
+    }
+  });
+
+  xhr.addEventListener('load', () => {
     try {
-      const response = await fetch('/api/testimonies/admin/upload', {
-        method: 'POST',
-        credentials: 'same-origin',
-        body: new FormData(form)
-      });
+      const data = JSON.parse(xhr.responseText);
 
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
+      if (xhr.status < 200 || xhr.status >= 300 || !data.success) {
         throw new Error(data.error || 'Upload imeshindikana.');
       }
 
+      progressBar.style.width = '100%';
       status.textContent = 'Shuhuda imehifadhiwa!';
       form.reset();
     } catch (error) {
@@ -1289,6 +1317,26 @@ WASIFU/BIOGRAPH
       uploadBtn.disabled = false;
     }
   });
+
+  xhr.addEventListener('error', () => {
+    status.textContent = 'Hitilafu ya mtandao. Upload imeshindikana.';
+    uploadBtn.disabled = false;
+  });
+
+  xhr.addEventListener('timeout', () => {
+    status.textContent = 'Upload imechukua muda mrefu sana.';
+    uploadBtn.disabled = false;
+  });
+
+  xhr.addEventListener('loadend', () => {
+    if (xhr.status < 200 || xhr.status >= 300) {
+      uploadBtn.disabled = false;
+    }
+  });
+
+  xhr.send(new FormData(form));
+});
+
 })();
 </script>
 
