@@ -1,31 +1,10 @@
+
 {
-  "name": "nyg-music-hub",
+  "name": "nyg-friends-dev",
   "main": "worker.js",
   "compatibility_date": "2026-08-30",
   "assets": {
     "directory": ".",
     "binding": "ASSETS"
-  },
-"r2_buckets": [
-  {
-    "binding": "MUSIC_BUCKET",
-    "bucket_name": "nyg-music-store"
-  },
-  {
-    "binding": "TESTIMONIES_BUCKET",
-    "bucket_name": "nyg-testimonies-audio"
   }
-],
-"d1_databases": [
-  {
-    "binding": "DB",
-    "database_name": "nyg-video-hub-db",
-    "database_id": "223d0a74-8b69-4614-99ed-a22a18982854"
-  },
-  {
-    "binding": "TESTIMONIES_DB",
-    "database_name": "nyg-testimonies-dev-db",
-    "database_id": "d7c7d8b9-56e4-4187-aa33-985f6759ee00"
-  }
-]
 }
