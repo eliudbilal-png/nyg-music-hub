@@ -252,6 +252,47 @@ await env.DB.batch([
       }
     }
 
+    // NYG VIDEO HUB - ADMIN DELETE COMMENT
+    if (path === '/api/video/admin/delete-comment') {
+      if (method !== 'POST') {
+        return reply({ error: 'Method not allowed' }, 405);
+      }
+
+      if (!(await sessionValid(request, env))) {
+        return reply({ error: 'Admin pekee anaruhusiwa.' }, 403);
+      }
+
+      if (!sameOrigin(request, url)) {
+        return reply({ error: 'Forbidden origin' }, 403);
+      }
+
+      if (!env.DB) {
+        return reply({ error: 'Database haijaunganishwa.' }, 503);
+      }
+
+      try {
+        const data = await request.json();
+        const commentId = Number(data?.comment_id);
+
+        if (!Number.isSafeInteger(commentId) || commentId <= 0) {
+          return reply({ error: 'Invalid comment ID' }, 400);
+        }
+
+        const result = await env.DB.prepare(
+          'DELETE FROM video_comments WHERE id = ?'
+        ).bind(commentId).run();
+
+        if (result.meta?.changes !== 1) {
+          return reply({ error: 'Comment haijapatikana.' }, 404);
+        }
+
+        return reply({ success: true });
+      } catch (error) {
+        console.error('Video comment delete error:', error);
+        return reply({ error: 'Imeshindikana kufuta comment.' }, 500);
+      }
+    }
+
     // ADMIN LOGIN
     // NYG SHUHUDA - ADMIN SESSION CHECK
 if (path === '/api/testimonies/admin/session' &&
