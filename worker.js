@@ -579,7 +579,7 @@ if (path === '/api/testimonies/admin/delete-comment' &&
 
   try {
     const result = await env.TESTIMONIES_DB.prepare(
-      'DELETE FROM nyg_testimony_comments WHERE id = ?'
+      'DELETE FROM nyg_testimony_group_comments WHERE id = ?'
     ).bind(commentId).run();
 
     if (result.meta?.changes !== 1) {
