@@ -1765,7 +1765,24 @@ shareButton.addEventListener("click", async function(event) {
 async function loadNYGVideoInteractions(videoId) {
   const count = document.getElementById("nyg-like-count");
   const list = document.getElementById("nyg-comments-list");
+let isNYGVideoAdmin = false;
 
+try {
+  const adminResponse = await fetch(
+    "/api/testimonies/admin/session",
+    {
+      credentials: "same-origin",
+      cache: "no-store"
+    }
+  );
+
+  if (adminResponse.ok) {
+    const adminData = await adminResponse.json();
+    isNYGVideoAdmin = adminData.authenticated === true;
+  }
+} catch (error) {
+  console.error("Video admin check:", error);
+}
   count.textContent = "...";
   list.textContent = "Inapakia maoni...";
 
@@ -1804,6 +1821,55 @@ async function loadNYGVideoInteractions(videoId) {
       message.textContent = item.comment_text;
 
       box.append(name, message);
+      if (isNYGVideoAdmin && Number.isSafeInteger(Number(item.id))) {
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.textContent = "🗑 Futa";
+  deleteBtn.style.cssText =
+    "display:block;margin-top:8px;padding:6px 12px;" +
+    "background:#b91c1c;color:white;border:0;" +
+    "border-radius:6px;cursor:pointer;font-size:12px;";
+
+  deleteBtn.addEventListener("click", async () => {
+    if (!confirm("Una uhakika unataka kufuta comment hii?")) {
+      return;
+    }
+
+    deleteBtn.disabled = true;
+    deleteBtn.textContent = "Inafuta...";
+
+    try {
+      const response = await fetch(
+        "/api/video/admin/delete-comment",
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            comment_id: Number(item.id)
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Imeshindikana kufuta.");
+      }
+
+      await loadNYGVideoInteractions(videoId);
+
+    } catch (error) {
+      alert(error.message);
+      deleteBtn.disabled = false;
+      deleteBtn.textContent = "🗑 Futa";
+    }
+  });
+
+  box.appendChild(deleteBtn);
+}
       list.appendChild(box);
     }
 
