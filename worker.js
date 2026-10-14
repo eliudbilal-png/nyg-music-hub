@@ -253,6 +253,16 @@ await env.DB.batch([
     }
 
     // ADMIN LOGIN
+    // NYG SHUHUDA - ADMIN SESSION CHECK
+if (path === '/api/testimonies/admin/session' &&
+    method === 'GET') {
+
+  const authenticated = await sessionValid(request, env);
+
+  return reply({
+    authenticated: authenticated
+  });
+}
     // NYG SHUHUDA - PUBLIC TESTIMONIES
     if (path === '/api/testimonies' && method === 'GET') {
       if (!env.TESTIMONIES_DB) {
