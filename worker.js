@@ -282,23 +282,16 @@ await env.DB.batch([
         return reply({ error: 'Testimonies database haijaunganishwa.' }, 503);
       }
 
-      const testimonyId = Number(url.searchParams.get('testimony_id'));
+      
+    try {
+      const result = await env.TESTIMONIES_DB.prepare(`
+        SELECT id, commenter_name, comment_text, created_at
+        FROM nyg_testimony_comments
+        WHERE status = 'approved'
+        ORDER BY id DESC
+        LIMIT 100
+      `).all();
 
-      if (!Number.isSafeInteger(testimonyId) || testimonyId <= 0) {
-        return reply({ error: 'Invalid testimony ID' }, 400);
-      }
-
-      try {
-        const result = await env.TESTIMONIES_DB.prepare(`
-          SELECT c.id, c.commenter_name, c.comment_text, c.created_at
-          FROM nyg_testimony_comments c
-          JOIN nyg_testimonies t ON t.id = c.testimony_id
-          WHERE c.testimony_id = ?
-            AND c.status = 'approved'
-            AND t.status = 'approved'
-          ORDER BY c.id DESC
-          LIMIT 100
-        `).bind(testimonyId).all();
 
         return reply({ comments: result.results || [] });
       } catch (error) {
