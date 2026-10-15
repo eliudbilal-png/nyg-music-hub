@@ -1,0 +1,13 @@
+
+{
+  "name": "nyg-friends-dev-api",
+  "main": "nyg-friends-api.js",
+  "compatibility_date": "2026-10-15",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nyg-friends-dev-db",
+      "database_id": "d5afc19f-0c8f-4bab-8efd-5e796faa33e1"
+    }
+  ]
+}
