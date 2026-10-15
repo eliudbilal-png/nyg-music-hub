@@ -1,0 +1,33 @@
+
+name: Deploy NYG Friends DEV API
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy DEV Worker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout DEV branch
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Deploy NYG Friends API
+        run: |
+          npx --yes wrangler@4 deploy nyg-friends-api.js \
+            --name nyg-friends-dev-api \
+            --compatibility-date 2026-10-15 \
+            --dry-run \
+            --outdir /tmp/nyg-friends-dev-check
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
