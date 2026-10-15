@@ -24,8 +24,9 @@ jobs:
 
       - name: Check DEV Worker
         run: |
-          npx --yes wrangler@4 deploy nyg-friends-api.js \
-            --name nyg-friends-dev-api \
-            --compatibility-date 2026-10-15 \
+          
+          npx --yes wrangler@4 deploy \
+            --config wrangler.friends-api.jsonc \
             --dry-run \
             --outdir /tmp/nyg-friends-dev-check
+
