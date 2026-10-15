@@ -23,11 +23,12 @@ jobs:
 
       - name: Deploy NYG Friends API
         run: |
-          npx --yes wrangler@4 deploy nyg-friends-api.js \
-            --name nyg-friends-dev-api \
-            --compatibility-date 2026-10-15 \
+          
+          npx --yes wrangler@4 deploy \
+            --config wrangler.friends-api.jsonc \
             --dry-run \
             --outdir /tmp/nyg-friends-dev-check
+
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
