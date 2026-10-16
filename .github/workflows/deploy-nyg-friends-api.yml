@@ -14,7 +14,9 @@ jobs:
 
     steps:
       - name: Checkout DEV branch
-        uses: actions/checkout@v4
+  uses: actions/checkout@v4
+  with:
+    ref: nyg-friends-dev
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
