@@ -113,10 +113,11 @@ autocomplete="new-password" placeholder="Rudia password">
 <p id="nyg-signup-message" role="status"
 style="color:#FFD700;font-size:13px;"></p>
 
-<button class="btn" type="submit" disabled
-style="opacity:.65;cursor:not-allowed;">
-TENGENEZA AKAUNTI (IN PREPARATION)
+
+<button class="btn" type="submit" id="nyg-submit">
+  TENGENEZA AKAUNTI
 </button>
+
 </form>
 </div>
 
@@ -148,6 +149,79 @@ TENGENEZA AKAUNTI (IN PREPARATION)
 <footer>
 NYG FRIENDS © 2026 | NYG CENTER
 </footer>
+
+<script>
+const signupForm = document.getElementById("nyg-signup-form");
+const signupButton = document.getElementById("nyg-submit");
+const signupMessage = document.getElementById("nyg-signup-message");
+
+signupForm.addEventListener("submit", async function (event) {
+  event.preventDefault();
+
+  if (signupButton.disabled) return;
+
+  const fullName = document.getElementById("nyg-name").value.trim();
+  const email = document.getElementById("nyg-email").value.trim();
+  const password = document.getElementById("nyg-password").value;
+  const confirmPassword = document.getElementById("nyg-confirm").value;
+  const acceptedTerms = signupForm.querySelector('input[type="checkbox"]').checked;
+
+  signupMessage.textContent = "";
+
+  if (password !== confirmPassword) {
+    signupMessage.textContent = "Password hazifanani.";
+    return;
+  }
+
+  if (password.length < 8 || password.length > 128) {
+    signupMessage.textContent = "Password iwe na herufi 8 hadi 128.";
+    return;
+  }
+
+  signupButton.disabled = true;
+  signupButton.textContent = "INATUMA TAARIFA...";
+  signupMessage.textContent = "Tafadhali subiri...";
+
+  try {
+    const response = await fetch(
+      "https://nyg-friends-dev-api.eliudbilal.workers.dev/api/signup",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          fullName,
+          email,
+          password,
+          confirmPassword,
+          acceptedTerms
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      signupMessage.textContent =
+        result.error || "Usajili umeshindikana.";
+      return;
+    }
+
+    signupMessage.textContent =
+      result.message || "Usajili umehifadhiwa.";
+
+    signupForm.reset();
+
+  } catch (error) {
+    signupMessage.textContent =
+      "Imeshindikana kuwasiliana na server. Jaribu tena.";
+  } finally {
+    signupButton.disabled = false;
+    signupButton.textContent = "TENGENEZA AKAUNTI";
+  }
+});
+</script>
 
 </body>
 </html>
