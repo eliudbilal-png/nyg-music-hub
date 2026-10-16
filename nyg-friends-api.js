@@ -236,7 +236,7 @@ export default {
     }
 
     if (
-      password.length < 12 ||
+      password.length < 8 ||
       password.length > 128
     ) {
       return json({
