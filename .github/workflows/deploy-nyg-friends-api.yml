@@ -14,9 +14,9 @@ jobs:
 
     steps:
       - name: Checkout DEV branch
-  uses: actions/checkout@v4
-  with:
-    ref: nyg-friends-dev
+        uses: actions/checkout@v4
+        with:
+          ref: nyg-friends-dev
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -25,12 +25,8 @@ jobs:
 
       - name: Deploy NYG Friends API
         run: |
-          
           npx --yes wrangler@4 deploy \
-            --config wrangler.friends-api.jsonc \
-            --dry-run \
-            --outdir /tmp/nyg-friends-dev-check
-
+            --config wrangler.friends-api.jsonc
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
