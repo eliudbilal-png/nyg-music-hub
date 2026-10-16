@@ -301,7 +301,7 @@ export default {
       }
 
       const passwordHash = await hashPassword(password);
-      const id = crypto.randomUUID();
+      
       const member = memberId();
 
       const verificationToken = bytesToHex(
@@ -312,27 +312,23 @@ export default {
       const expiresAt = now + 86400000;
 
       await env.DB.prepare(
-        `INSERT INTO members (
-          id,
-          member_id,
-          full_name,
-          email,
-          password_hash,
-          email_verified,
-          verification_token_hash,
-          verification_expires_at,
-          created_at
-        ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)`
-      ).bind(
-        id,
-        member,
-        name,
-        mail,
-        passwordHash,
-        tokenHash,
-        expiresAt,
-        now
-      ).run();
+  `INSERT INTO members (
+    member_id,
+    full_name,
+    email,
+    password_hash,
+    email_verified,
+    verification_token_hash,
+    verification_expires_at
+  ) VALUES (?, ?, ?, ?, 0, ?, ?)`
+).bind(
+  member,
+  name,
+  mail,
+  passwordHash,
+  tokenHash,
+  expiresAt
+).run();
 
       // Email verification delivery will be added later.
       // Never return the verification token to visitors.
