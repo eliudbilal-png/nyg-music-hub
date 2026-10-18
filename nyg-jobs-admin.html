@@ -1,0 +1,115 @@
+
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NYG JOBS - ADMIN PANEL</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ background:#061526;
+ color:white;
+ font-family:Arial,sans-serif;
+ padding:18px;
+}
+.panel{
+ max-width:650px;
+ margin:25px auto;
+ background:#193150;
+ padding:20px;
+ border:1px solid #416a95;
+ border-radius:12px;
+}
+h2{text-align:center;color:white}
+label{
+ display:block;
+ margin:15px 0 6px;
+ font-weight:bold;
+ font-size:14px;
+}
+input,textarea,select{
+ width:100%;
+ padding:12px;
+ background:#0c2039;
+ color:white;
+ border:1px solid #416a95;
+ border-radius:7px;
+ font-size:14px;
+}
+textarea{min-height:100px}
+button{
+ width:100%;
+ padding:14px;
+ margin-top:18px;
+ border:0;
+ border-radius:8px;
+ background:#14783a;
+ color:white;
+ font-weight:bold;
+ font-size:15px;
+}
+.notice{
+ color:#b9cce1;
+ font-size:12px;
+ text-align:center;
+ line-height:1.6;
+}
+</style>
+</head>
+<body>
+
+<div class="panel">
+<h2>NYG JOBS - ADMIN PANEL</h2>
+
+<p class="notice">
+FURSA ZA KAZI - ADMIN ONLY
+</p>
+
+<form id="jobForm">
+
+<label>Jina la Kazi</label>
+<input id="title" required>
+
+<label>Kampuni / Taasisi</label>
+<input id="company" required>
+
+<label>Mahali pa Kazi</label>
+<input id="location">
+
+<label>Maelezo ya Kazi</label>
+<textarea id="description" required></textarea>
+
+<label>Sifa za Mwombaji</label>
+<textarea id="requirements"></textarea>
+
+<label>Link ya Kutuma Maombi</label>
+<input id="application_link" type="url">
+
+<label>Email ya Maombi</label>
+<input id="contact_email" type="email">
+
+<label>Tarehe ya Mwisho</label>
+<input id="deadline" type="date">
+
+<label>Hali ya Tangazo</label>
+<select id="status">
+<option value="draft">Draft</option>
+<option value="published">Published</option>
+</select>
+
+<button type="submit" disabled>
+HIFADHI KAZI (IN PREPARATION)
+</button>
+
+</form>
+
+<p class="notice">
+Mfumo wa kuhifadhi kazi utafunguliwa
+baada ya kuunganisha API salama.
+</p>
+</div>
+
+</body>
+</html>
