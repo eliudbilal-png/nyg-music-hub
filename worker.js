@@ -498,6 +498,30 @@ if (path.startsWith('/api/testimonies/audio/') &&
     }, 500);
   }
 }
+    // NYG JOBS - PUBLIC JOB LIST
+    if (path === '/api/jobs' && method === 'GET') {
+      if (!env.JOBS_DB) {
+        return reply({ error: 'Jobs database haijaunganishwa.' }, 503);
+      }
+
+      try {
+        const result = await env.JOBS_DB.prepare(`
+          SELECT id, title, company, location,
+                 description, requirements,
+                 application_link, contact_email,
+                 deadline, published_at
+          FROM jobs
+          WHERE status = 'published'
+          ORDER BY published_at DESC, id DESC
+          LIMIT 50
+        `).all();
+
+        return reply({ jobs: result.results || [] });
+      } catch (error) {
+        console.error('NYG Jobs list error:', error);
+        return reply({ error: 'Imeshindikana kupata kazi.' }, 500);
+      }
+    }
     if (path.startsWith('/api/')) {
       if (!await sessionValid(request, env)) {
         return reply({ error: 'Tafadhali ingia kama admin.' }, 401);
@@ -609,7 +633,7 @@ if (path === '/api/testimonies/admin/upload' &&
     }, 500);
   }
 }    
-// NYG SHUHUDA - ADMIN DELETE COMMENT
+// NYG SHUHUDA - ADMIN DELETE COMMENT  
 if (path === '/api/testimonies/admin/delete-comment' &&
     method === 'POST') {
 
@@ -647,6 +671,8 @@ if (path === '/api/testimonies/admin/delete-comment' &&
     return reply({ error: 'Imeshindikana kufuta comment.' }, 500);
   }
 }
+      
+    
       // CLICKPESA TEST
       if (path === '/api/clickpesa/test' && method === 'POST') {
         try {
