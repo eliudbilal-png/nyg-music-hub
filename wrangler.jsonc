@@ -26,6 +26,13 @@
     "binding": "TESTIMONIES_DB",
     "database_name": "nyg-testimonies-dev-db",
     "database_id": "d7c7d8b9-56e4-4187-aa33-985f6759ee00"
-  }
-]
+  
+    },
+    {
+      "binding": "JOBS_DB",
+      "database_name": "nyg-jobs-db",
+      "database_id": "2d868101-2878-472b-a1aa-0e2e773921c4"
+    }
+  ]
+
 }
