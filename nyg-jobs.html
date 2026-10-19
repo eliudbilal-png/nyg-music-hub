@@ -1,0 +1,214 @@
+
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FURSA ZA KAZI | NYG CENTER</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 15px;
+  background: #071323;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+.jobs-page {
+  width: 100%;
+  max-width: 850px;
+  margin: 20px auto;
+  padding: 18px;
+  background: #172e4d;
+  border: 1px solid #365a83;
+  border-radius: 14px;
+}
+
+h1 {
+  color: white;
+  text-align: center;
+  font-size: 23px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #c3d8ef;
+  font-size: 13px;
+}
+
+.job-card {
+  background: #0c2039;
+  border: 1px solid #416a95;
+  border-radius: 10px;
+  padding: 16px;
+  margin: 15px 0;
+}
+
+.job-card h2 {
+  color: white;
+  font-size: 18px;
+  margin: 0 0 10px;
+}
+
+.job-card p {
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.job-card strong {
+  color: #a8d7ff;
+}
+
+.apply {
+  display: inline-block;
+  background: #14783a;
+  color: white;
+  padding: 11px 15px;
+  border-radius: 7px;
+  font-weight: bold;
+  text-decoration: none;
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+}
+
+.status {
+  text-align: center;
+  color: #c3d8ef;
+  padding: 20px 0;
+}
+
+.back {
+  display: inline-block;
+  color: #70bfff;
+  margin-top: 20px;
+  font-size: 14px;
+}
+
+</style>
+</head>
+
+<body>
+
+<main class="jobs-page">
+
+<h1>FURSA ZA KAZI</h1>
+
+<p class="subtitle">
+Matangazo ya ajira na fursa mbalimbali kupitia NYG CENTER
+</p>
+
+<div id="jobsList" aria-live="polite">
+  <p class="status">Inapakia matangazo ya kazi...</p>
+</div>
+
+<a href="nyg-market-place.html" class="back">
+  ← RUDI NYG MARKET PLACE
+</a>
+
+</main>
+
+<script>
+const jobsList = document.getElementById("jobsList");
+
+function addText(parent, tag, label, value) {
+  if (!value) return;
+
+  const element = document.createElement(tag);
+
+  if (label) {
+    const strong = document.createElement("strong");
+    strong.textContent = label + ": ";
+    element.appendChild(strong);
+  }
+
+  element.appendChild(
+    document.createTextNode(String(value))
+  );
+
+  parent.appendChild(element);
+}
+
+function showJobs(jobs) {
+  jobsList.replaceChildren();
+
+  if (!jobs.length) {
+    jobsList.innerHTML =
+      '<p class="status">Hakuna matangazo ya kazi yaliyotangazwa kwa sasa.</p>';
+    return;
+  }
+
+  jobs.forEach(job => {
+    const card = document.createElement("article");
+    card.className = "job-card";
+
+    addText(card, "h2", "", job.title);
+    addText(card, "p", "Kampuni / Taasisi", job.company);
+    addText(card, "p", "Mahali", job.location);
+    addText(card, "p", "Maelezo ya Kazi", job.description);
+    addText(card, "p", "Sifa za Mwombaji", job.requirements);
+    addText(card, "p", "Tarehe ya Mwisho", job.deadline);
+
+    if (job.application_link) {
+      try {
+        const url = new URL(job.application_link);
+
+        if (["https:", "http:"].includes(url.protocol)) {
+          const link = document.createElement("a");
+          link.className = "apply";
+          link.href = url.href;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = "TUMA MAOMBI";
+          card.appendChild(link);
+        }
+      } catch (e) {
+        // Link is invalid; do not display it.
+      }
+    }
+
+    if (job.contact_email) {
+      const email = String(job.contact_email);
+      const link = document.createElement("a");
+      link.className = "apply";
+      link.href = "mailto:" + email;
+      link.textContent = "TUMA EMAIL YA MAOMBI";
+      card.appendChild(link);
+    }
+
+    jobsList.appendChild(card);
+  });
+}
+
+async function loadJobs() {
+  try {
+    const response = await fetch("/api/jobs", {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error("API error");
+    }
+
+    const data = await response.json();
+
+    if (!Array.isArray(data.jobs)) {
+      throw new Error("Invalid API response");
+    }
+
+    showJobs(data.jobs);
+
+  } catch (error) {
+    jobsList.innerHTML =
+      '<p class="status">Imeshindikana kupakia matangazo. Jaribu tena baadaye.</p>';
+  }
+}
+
+loadJobs();
+</script>
+
+</body>
+</html>
