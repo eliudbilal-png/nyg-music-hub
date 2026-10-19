@@ -49,13 +49,28 @@ button{
  color:white;
  font-weight:bold;
  font-size:15px;
+ cursor:pointer;
 }
+button:disabled{
+ opacity:.6;
+ cursor:not-allowed;
+}
+button.secondary{background:#415d7b}
 .notice{
  color:#b9cce1;
  font-size:12px;
  text-align:center;
  line-height:1.6;
 }
+.message{
+ margin-top:15px;
+ padding:12px;
+ border-radius:7px;
+ background:#0c2039;
+ text-align:center;
+ font-size:14px;
+}
+[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -63,53 +78,201 @@ button{
 <div class="panel">
 <h2>NYG JOBS - ADMIN PANEL</h2>
 
-<p class="notice">
-FURSA ZA KAZI - ADMIN ONLY
-</p>
+<p class="notice">FURSA ZA KAZI - ADMIN ONLY</p>
+
+<section id="loginSection">
+<form id="loginForm">
+<label for="accessCode">Admin Access Code</label>
+<input id="accessCode" type="password"
+ autocomplete="current-password" required>
+<button id="loginButton" type="submit">
+INGIA KAMA ADMIN
+</button>
+</form>
+</section>
+
+<section id="adminSection" hidden>
+
+<button class="secondary" id="logoutButton" type="button">
+ADMIN LOGOUT
+</button>
 
 <form id="jobForm">
 
-<label>Jina la Kazi</label>
-<input id="title" required>
+<label for="title">Jina la Kazi</label>
+<input id="title" required maxlength="200">
 
-<label>Kampuni / Taasisi</label>
-<input id="company" required>
+<label for="company">Kampuni / Taasisi</label>
+<input id="company" required maxlength="200">
 
-<label>Mahali pa Kazi</label>
-<input id="location">
+<label for="location">Mahali pa Kazi</label>
+<input id="location" maxlength="200">
 
-<label>Maelezo ya Kazi</label>
-<textarea id="description" required></textarea>
+<label for="description">Maelezo ya Kazi</label>
+<textarea id="description" required maxlength="10000"></textarea>
 
-<label>Sifa za Mwombaji</label>
-<textarea id="requirements"></textarea>
+<label for="requirements">Sifa za Mwombaji</label>
+<textarea id="requirements" maxlength="10000"></textarea>
 
-<label>Link ya Kutuma Maombi</label>
-<input id="application_link" type="url">
+<label for="application_link">Link ya Kutuma Maombi</label>
+<input id="application_link" type="url" maxlength="2048">
 
-<label>Email ya Maombi</label>
-<input id="contact_email" type="email">
+<label for="contact_email">Email ya Maombi</label>
+<input id="contact_email" type="email" maxlength="254">
 
-<label>Tarehe ya Mwisho</label>
+<label for="deadline">Tarehe ya Mwisho</label>
 <input id="deadline" type="date">
 
-<label>Hali ya Tangazo</label>
+<label for="status">Hali ya Tangazo</label>
 <select id="status">
 <option value="draft">Draft</option>
-<option value="published">Published</option>
 </select>
 
-<button type="submit" disabled>
-HIFADHI KAZI (IN PREPARATION)
+<button id="saveButton" type="submit">
+HIFADHI KAZI
 </button>
 
 </form>
 
 <p class="notice">
-Mfumo wa kuhifadhi kazi utafunguliwa
-baada ya kuunganisha API salama.
+Kwa sasa matangazo yanahifadhiwa kama Draft.
+Uchapishaji utawezeshwa baada ya kuunganisha
+mfumo wa Published.
 </p>
+
+</section>
+
+<div id="message" class="message" role="status"
+ aria-live="polite" hidden></div>
 </div>
+
+<script>
+const loginSection = document.getElementById('loginSection');
+const adminSection = document.getElementById('adminSection');
+const message = document.getElementById('message');
+const loginButton = document.getElementById('loginButton');
+const saveButton = document.getElementById('saveButton');
+
+function showMessage(text) {
+  message.textContent = text;
+  message.hidden = false;
+}
+
+function showAdmin(loggedIn) {
+  loginSection.hidden = loggedIn;
+  adminSection.hidden = !loggedIn;
+}
+
+async function readResponse(response) {
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || 'Hitilafu ya mfumo.');
+  }
+  return data;
+}
+
+async function checkSession() {
+  try {
+    const response = await fetch('/api/admin/status', {
+      credentials: 'same-origin',
+      cache: 'no-store'
+    });
+    showAdmin(response.ok);
+  } catch {
+    showAdmin(false);
+    showMessage('Imeshindikana kukagua Admin session.');
+  }
+}
+
+document.getElementById('loginForm')
+.addEventListener('submit', async function(event) {
+  event.preventDefault();
+  loginButton.disabled = true;
+  message.hidden = true;
+
+  try {
+    const response = await fetch('/api/admin/login', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        code: document.getElementById('accessCode').value
+      })
+    });
+
+    await readResponse(response);
+    document.getElementById('accessCode').value = '';
+    showAdmin(true);
+    showMessage('Umeingia kama Admin.');
+  } catch (error) {
+    showMessage(error.message);
+  } finally {
+    loginButton.disabled = false;
+  }
+});
+
+document.getElementById('logoutButton')
+.addEventListener('click', async function() {
+  try {
+    const response = await fetch('/api/admin/logout', {
+      method: 'POST',
+      credentials: 'same-origin'
+    });
+    await readResponse(response);
+    showAdmin(false);
+    showMessage('Umetoka kwenye Admin.');
+  } catch (error) {
+    showMessage(error.message);
+  }
+});
+
+document.getElementById('jobForm')
+.addEventListener('submit', async function(event) {
+  event.preventDefault();
+
+  saveButton.disabled = true;
+  saveButton.textContent = 'INAHIFADHI...';
+  message.hidden = true;
+
+  const fields = [
+    'title','company','location','description',
+    'requirements','application_link',
+    'contact_email','deadline'
+  ];
+
+  const payload = {};
+  fields.forEach(id => {
+    payload[id] = document.getElementById(id).value.trim();
+  });
+
+  try {
+    const response = await fetch('/api/jobs/admin/create', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+
+    const result = await readResponse(response);
+
+    document.getElementById('jobForm').reset();
+    showMessage(
+      result.message || 'Tangazo limehifadhiwa kama Draft.'
+    );
+
+  } catch (error) {
+    if (error.message.includes('Tafadhali ingia')) {
+      showAdmin(false);
+    }
+    showMessage(error.message);
+  } finally {
+    saveButton.disabled = false;
+    saveButton.textContent = 'HIFADHI KAZI';
+  }
+});
+
+checkSession();
+</script>
 
 </body>
 </html>
