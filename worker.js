@@ -125,10 +125,17 @@ export default {
         const applicationLink = String(data.application_link || '').trim();
         const contactEmail = String(data.contact_email || '').trim();
         const deadline = String(data.deadline || '').trim();
+        const status = String(data.status || 'draft').trim();
 
         if (!title || !company || !description) {
           return reply({
             error: 'Jina la kazi, kampuni na maelezo vinahitajika.'
+          }, 400);
+        }
+
+        if (!['draft', 'published'].includes(status)) {
+          return reply({
+            error: 'Hali ya tangazo si sahihi.'
           }, 400);
         }
 
@@ -178,10 +185,17 @@ export default {
             INSERT INTO jobs (
               title, company, location, description,
               requirements, application_link, contact_email,
-              deadline, status, created_at, updated_at
+              deadline, status, created_at, updated_at,
+              published_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft',
-                    datetime('now'), datetime('now'))
+            VALUES (
+              ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              datetime('now'), datetime('now'),
+              CASE WHEN ? = 'published'
+                THEN datetime('now')
+                ELSE NULL
+              END
+            )
           `).bind(
             title,
             company,
@@ -190,13 +204,18 @@ export default {
             requirements || null,
             applicationLink || null,
             contactEmail || null,
-            deadline || null
+            deadline || null,
+            status,
+            status
           ).run();
 
           return reply({
             success: true,
             job_id: result.meta?.last_row_id,
-            message: 'Tangazo limehifadhiwa kama draft.'
+            status,
+            message: status === 'published'
+              ? 'Tangazo limechapishwa.'
+              : 'Tangazo limehifadhiwa kama Draft.'
           }, 201);
 
         } catch (error) {
@@ -427,7 +446,6 @@ export default {
       const headers = new Headers();
       object.writeHttpMetadata(headers);
       headers.set('etag', object.httpEtag);
-
       return new Response(object.body, { headers });
     }
 
