@@ -117,7 +117,9 @@ if (jobId && /^\d{1,12}$/.test(jobId)) {
 const form = document.getElementById("applicationForm");
 const submitBtn = document.getElementById("submitBtn");
 
-
+if (jobId && /^\d{1,12}$/.test(jobId) && jobField.value.trim()) {
+  submitBtn.disabled = false;
+}
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
