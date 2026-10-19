@@ -522,6 +522,86 @@ if (path.startsWith('/api/testimonies/audio/') &&
         return reply({ error: 'Imeshindikana kupata kazi.' }, 500);
       }
     }
+    
+    // NYG JOBS - PUBLIC APPLICATION SUBMISSION
+    if (path === '/api/jobs/apply' && method === 'POST') {
+      if (!env.JOBS_DB) {
+        return reply({ error: 'Database haijaunganishwa.' }, 503);
+      }
+
+      if (!sameOrigin(request, url)) {
+        return reply({ error: 'Forbidden origin' }, 403);
+      }
+
+      const contentType = request.headers.get('Content-Type') || '';
+      if (!contentType.toLowerCase().includes('application/json')) {
+        return reply({ error: 'Tuma taarifa za JSON.' }, 415);
+      }
+
+      const contentLength = Number(request.headers.get('Content-Length') || 0);
+      if (contentLength > 12000) {
+        return reply({ error: 'Taarifa ni kubwa mno.' }, 413);
+      }
+
+      try {
+        const raw = await request.text();
+        if (raw.length > 12000) {
+          return reply({ error: 'Taarifa ni kubwa mno.' }, 413);
+        }
+
+        const data = JSON.parse(raw);
+
+        const jobId = Number(data.job_id);
+        const fullName = String(data.full_name || '').trim();
+        const phone = String(data.phone || '').trim();
+        const email = String(data.email || '').trim();
+        const education = String(data.education || '').trim();
+        const experience = String(data.experience || '').trim();
+
+        if (!Number.isSafeInteger(jobId) || jobId <= 0) {
+          return reply({ error: 'Chagua nafasi halali ya kazi.' }, 400);
+        }
+
+        if (fullName.length < 2 || fullName.length > 120 ||
+            phone.length < 7 || phone.length > 25 ||
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+            email.length > 254 ||
+            education.length > 1500 ||
+            experience.length > 2000) {
+          return reply({ error: 'Kagua taarifa ulizojaza.' }, 400);
+        }
+
+        const job = await env.JOBS_DB.prepare(
+          "SELECT id FROM jobs WHERE id = ? AND status = 'published' AND (deadline IS NULL OR deadline = '' OR deadline >= date('now'))"
+        ).bind(jobId).first();
+
+        if (!job) {
+          return reply({ error: 'Nafasi hii haipatikani kwa maombi.' }, 404);
+        }
+
+        const result = await env.JOBS_DB.prepare(
+          `INSERT INTO job_applications
+           (job_id, full_name, phone, email, education, experience)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(
+          jobId, fullName, phone, email, education, experience
+        ).run();
+
+        return reply({
+          success: true,
+          application_id: result.meta.last_row_id,
+          message: 'Ombi lako limepokelewa.'
+        }, 201);
+
+      } catch (error) {
+        console.error('NYG job application error:', error);
+        return reply({
+          error: 'Imeshindikana kupokea ombi. Jaribu tena.'
+        }, 500);
+      }
+    }
+
+
     if (path.startsWith('/api/')) {
       if (!await sessionValid(request, env)) {
         return reply({ error: 'Tafadhali ingia kama admin.' }, 401);
