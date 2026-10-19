@@ -152,23 +152,13 @@ function showJobs(jobs) {
     addText(card, "p", "Sifa za Mwombaji", job.requirements);
     addText(card, "p", "Tarehe ya Mwisho", job.deadline);
 
-    if (job.application_link) {
-      try {
-        const url = new URL(job.application_link);
-
-        if (["https:", "http:"].includes(url.protocol)) {
-          const link = document.createElement("a");
-          link.className = "apply";
-          link.href = url.href;
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
-          link.textContent = "TUMA MAOMBI";
-          card.appendChild(link);
-        }
-      } catch (e) {
-        // Link is invalid; do not display it.
-      }
-    }
+    
+    const link = document.createElement("a");
+    link.className = "apply";
+    link.href = "nyg-job-application.html?job_id="
+      + encodeURIComponent(job.id);
+    link.textContent = "TUMA MAOMBI";
+    card.appendChild(link);
 
     if (job.contact_email) {
       const email = String(job.contact_email);
