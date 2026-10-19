@@ -80,7 +80,9 @@ a { color: #85c8ff; }
 
 <p class="note">CV ni hiari. Kwa sasa maombi yanapokelewa kwa maandishi pekee.</p>
 
-<button type="submit" disabled>TUMA MAOMBI — IN PREPARATION</button>
+
+<button type="submit" id="submitBtn" disabled>TUMA MAOMBI</button>
+
 <p class="note">Mfumo wa kupokea maombi bado unaandaliwa.</p>
 </form>
 
@@ -105,13 +107,57 @@ if (jobId && /^\d{1,12}$/.test(jobId)) {
 
       if (job) {
         jobField.value = job.title + " — " + job.company;
+ document.getElementById("submitBtn").disabled = false;       
       }
     })
     .catch(() => {});
 }
 
-document.getElementById("applicationForm")
-  .addEventListener("submit", e => e.preventDefault());
+
+const form = document.getElementById("applicationForm");
+const submitBtn = document.getElementById("submitBtn");
+
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  if (submitBtn.disabled || !form.reportValidity()) return;
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = "INATUMA MAOMBI...";
+
+  try {
+    const response = await fetch("/api/jobs/apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        job_id: Number(jobId),
+        full_name: document.getElementById("name").value,
+        phone: document.getElementById("phone").value,
+        email: document.getElementById("email").value,
+        education: document.getElementById("education").value,
+        experience: document.getElementById("experience").value
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Ombi halijatumwa.");
+    }
+
+    alert("Ombi lako limepokelewa! Namba: " + result.application_id);
+    form.reset();
+    submitBtn.textContent = "MAOMBI YAMEPOKELEWA";
+
+  } catch (error) {
+    alert(error.message);
+    submitBtn.disabled = false;
+    submitBtn.textContent = "TUMA MAOMBI";
+  }
+});
+
 </script>
 </body>
 </html>
