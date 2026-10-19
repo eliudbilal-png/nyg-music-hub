@@ -1,0 +1,117 @@
+
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maombi ya Kazi | NYG CENTER</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 15px;
+  background: #071323;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+main {
+  max-width: 700px;
+  margin: 25px auto;
+  padding: 20px;
+  background: #172e4d;
+  border: 1px solid #365a83;
+  border-radius: 14px;
+}
+h1 { text-align: center; font-size: 24px; }
+.subtitle { text-align: center; color: #c3d8ef; }
+label { display: block; margin: 16px 0 6px; font-weight: bold; }
+input, textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #8ba5bf;
+  border-radius: 7px;
+  font: inherit;
+}
+textarea { min-height: 90px; }
+button {
+  background: #168044;
+  color: white;
+  padding: 13px;
+  border: none;
+  border-radius: 7px;
+  width: 100%;
+  margin-top: 20px;
+  font-weight: bold;
+}
+button:disabled { opacity: .6; }
+a { color: #85c8ff; }
+.note { color: #c3d8ef; font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+<h1>FOMU YA MAOMBI YA KAZI</h1>
+<p class="subtitle">NYG CENTER — FURSA ZA KAZI</p>
+
+<form id="applicationForm">
+<label for="job">Nafasi unayoomba</label>
+<input id="job" readonly placeholder="Chagua kazi kutoka FURSA ZA KAZI">
+
+<label for="name">Jina kamili *</label>
+<input id="name" name="full_name" maxlength="120" required>
+
+<label for="phone">Namba ya simu *</label>
+<input id="phone" name="phone" type="tel" maxlength="25" required>
+
+<label for="email">Email *</label>
+<input id="email" name="email" type="email" maxlength="254" required>
+
+<label for="location">Mahali unapoishi</label>
+<input id="location" name="location" maxlength="150">
+
+<label for="education">Elimu yako</label>
+<textarea id="education" name="education" maxlength="1500"></textarea>
+
+<label for="experience">Uzoefu wa kazi</label>
+<textarea id="experience" name="experience" maxlength="2000"></textarea>
+
+<label for="about">Maelezo mafupi kuhusu wewe</label>
+<textarea id="about" name="about" maxlength="2000"></textarea>
+
+<p class="note">CV ni hiari. Kwa sasa maombi yanapokelewa kwa maandishi pekee.</p>
+
+<button type="submit" disabled>TUMA MAOMBI — IN PREPARATION</button>
+<p class="note">Mfumo wa kupokea maombi bado unaandaliwa.</p>
+</form>
+
+<p><a href="nyg-jobs.html">← RUDI FURSA ZA KAZI</a></p>
+</main>
+
+<script>
+const params = new URLSearchParams(location.search);
+const jobId = params.get("job_id");
+const jobField = document.getElementById("job");
+
+if (jobId && /^\d{1,12}$/.test(jobId)) {
+  fetch("/api/jobs", { cache: "no-store" })
+    .then(response => {
+      if (!response.ok) throw new Error("API error");
+      return response.json();
+    })
+    .then(data => {
+      const job = Array.isArray(data.jobs)
+        ? data.jobs.find(j => String(j.id) === jobId)
+        : null;
+
+      if (job) {
+        jobField.value = job.title + " — " + job.company;
+      }
+    })
+    .catch(() => {});
+}
+
+document.getElementById("applicationForm")
+  .addEventListener("submit", e => e.preventDefault());
+</script>
+</body>
+</html>
