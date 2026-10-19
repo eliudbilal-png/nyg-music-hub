@@ -1,3 +1,4 @@
+
 const enc = new TextEncoder();
 
 function base64url(bytes) {
@@ -24,31 +25,202 @@ async function sessionValid(request, env) {
   return difference === 0;
 }
 
-const reply = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers } });
+const reply = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {
+  status,
+  headers: {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    ...headers
+  }
+});
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    // ADMIN LOGIN
     if (url.pathname === '/api/admin/login' && request.method === 'POST') {
       if (!env.ADMIN_ACCESS_CODE || !env.ADMIN_SESSION_SECRET) return reply({ error: 'Admin login bado haijawekwa kwenye server.' }, 503);
       const body = await request.json().catch(() => ({}));
       if (body.code !== env.ADMIN_ACCESS_CODE) return reply({ error: 'Access code si sahihi.' }, 401);
       const expires = String(Date.now() + 8 * 60 * 60 * 1000);
       const token = `${expires}.${await sign(expires, env.ADMIN_SESSION_SECRET)}`;
-      return reply({ ok: true }, 200, { 'set-cookie': `nyg_admin=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=28800` });
+      return reply({ ok: true }, 200, {
+        'set-cookie': `nyg_admin=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=28800`
+      });
     }
 
+    // ADMIN LOGOUT
     if (url.pathname === '/api/admin/logout' && request.method === 'POST') {
-      return reply({ ok: true }, 200, { 'set-cookie': 'nyg_admin=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0' });
+      return reply({ ok: true }, 200, {
+        'set-cookie': 'nyg_admin=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0'
+      });
     }
 
-    if (url.pathname.startsWith('/api/')) {
-      if (!await sessionValid(request, env)) return reply({ error: 'Tafadhali ingia kama admin.' }, 401);
-      if (url.pathname === '/api/admin/status') return reply({ aiConfigured: Boolean(env.ELEVENLABS_API_KEY) });
+    // NYG JOBS - PUBLIC JOB LIST
+    if (url.pathname === '/api/jobs' && request.method === 'GET') {
+      if (!env.JOBS_DB) {
+        return reply({
+          error: 'Jobs database haijaunganishwa.'
+        }, 503);
+      }
 
+      try {
+        const result = await env.JOBS_DB.prepare(`
+          SELECT id, title, company, location,
+                 description, requirements,
+                 application_link, contact_email,
+                 deadline, published_at
+          FROM jobs
+          WHERE status = 'published'
+          ORDER BY published_at DESC, id DESC
+          LIMIT 50
+        `).all();
+
+        return reply({
+          jobs: result.results || []
+        });
+
+      } catch (error) {
+        console.error('NYG Jobs list error:', error);
+        return reply({
+          error: 'Imeshindikana kupata matangazo ya kazi.'
+        }, 500);
+      }
+    }
+
+    // PROTECTED ADMIN APIs
+    if (url.pathname.startsWith('/api/')) {
+      if (!await sessionValid(request, env)) {
+        return reply({
+          error: 'Tafadhali ingia kama admin.'
+        }, 401);
+      }
+
+      // NYG JOBS - ADMIN CREATE JOB
+      if (url.pathname === '/api/jobs/admin/create' &&
+          request.method === 'POST') {
+
+        if (request.headers.get('Origin') !== url.origin) {
+          return reply({ error: 'Forbidden origin' }, 403);
+        }
+
+        if (!env.JOBS_DB) {
+          return reply({
+            error: 'Jobs database haijaunganishwa.'
+          }, 503);
+        }
+
+        const data = await request.json().catch(() => null);
+
+        if (!data || typeof data !== 'object' || Array.isArray(data)) {
+          return reply({ error: 'Taarifa si sahihi.' }, 400);
+        }
+
+        const title = String(data.title || '').trim();
+        const company = String(data.company || '').trim();
+        const location = String(data.location || '').trim();
+        const description = String(data.description || '').trim();
+        const requirements = String(data.requirements || '').trim();
+        const applicationLink = String(data.application_link || '').trim();
+        const contactEmail = String(data.contact_email || '').trim();
+        const deadline = String(data.deadline || '').trim();
+
+        if (!title || !company || !description) {
+          return reply({
+            error: 'Jina la kazi, kampuni na maelezo vinahitajika.'
+          }, 400);
+        }
+
+        if (
+          title.length > 200 ||
+          company.length > 200 ||
+          location.length > 200 ||
+          description.length > 10000 ||
+          requirements.length > 10000 ||
+          applicationLink.length > 2048 ||
+          contactEmail.length > 254
+        ) {
+          return reply({
+            error: 'Maandishi yamezidi kiwango.'
+          }, 400);
+        }
+
+        if (applicationLink) {
+          try {
+            const link = new URL(applicationLink);
+            if (!['https:', 'http:'].includes(link.protocol)) {
+              throw new Error('Invalid protocol');
+            }
+          } catch {
+            return reply({
+              error: 'Link ya maombi si sahihi.'
+            }, 400);
+          }
+        }
+
+        if (contactEmail &&
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+          return reply({
+            error: 'Email si sahihi.'
+          }, 400);
+        }
+
+        if (deadline &&
+            !/^\d{4}-\d{2}-\d{2}$/.test(deadline)) {
+          return reply({
+            error: 'Tarehe ya mwisho si sahihi.'
+          }, 400);
+        }
+
+        try {
+          const result = await env.JOBS_DB.prepare(`
+            INSERT INTO jobs (
+              title, company, location, description,
+              requirements, application_link, contact_email,
+              deadline, status, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft',
+                    datetime('now'), datetime('now'))
+          `).bind(
+            title,
+            company,
+            location || null,
+            description,
+            requirements || null,
+            applicationLink || null,
+            contactEmail || null,
+            deadline || null
+          ).run();
+
+          return reply({
+            success: true,
+            job_id: result.meta?.last_row_id,
+            message: 'Tangazo limehifadhiwa kama draft.'
+          }, 201);
+
+        } catch (error) {
+          console.error('NYG Jobs create error:', error);
+          return reply({
+            error: 'Imeshindikana kuhifadhi tangazo.'
+          }, 500);
+        }
+      }
+
+      // ADMIN STATUS
+      if (url.pathname === '/api/admin/status') {
+        return reply({
+          aiConfigured: Boolean(env.ELEVENLABS_API_KEY)
+        });
+      }
+
+      // MUSIC HISTORY
       if (url.pathname === '/api/music/history' && request.method === 'GET') {
-        const listed = await env.MUSIC_BUCKET.list({ prefix: 'generated/', limit: 50 });
+        const listed = await env.MUSIC_BUCKET.list({
+          prefix: 'generated/',
+          limit: 50
+        });
+
         const items = listed.objects
           .sort((a, b) => new Date(b.uploaded) - new Date(a.uploaded))
           .map(object => ({
@@ -58,115 +230,204 @@ export default {
             size: object.size,
             url: `/music/${encodeURIComponent(object.key)}`
           }));
+
         return reply({ items });
       }
 
+      // HUMMING UPLOAD
       if (url.pathname === '/api/humming/upload' && request.method === 'POST') {
-        const type = (request.headers.get('content-type') || '').split(';')[0].toLowerCase();
+        const type = (request.headers.get('content-type') || '')
+          .split(';')[0].toLowerCase();
+
         const allowed = new Map([
-          ['audio/webm', 'webm'], ['audio/ogg', 'ogg'], ['audio/mp4', 'm4a'],
-          ['audio/mpeg', 'mp3'], ['audio/wav', 'wav'], ['audio/x-wav', 'wav']
+          ['audio/webm', 'webm'],
+          ['audio/ogg', 'ogg'],
+          ['audio/mp4', 'm4a'],
+          ['audio/mpeg', 'mp3'],
+          ['audio/wav', 'wav'],
+          ['audio/x-wav', 'wav']
         ]);
-        if (!allowed.has(type)) return reply({ error: 'Tuma audio ya WebM, OGG, M4A, MP3 au WAV.' }, 415);
+
+        if (!allowed.has(type)) {
+          return reply({
+            error: 'Tuma audio ya WebM, OGG, M4A, MP3 au WAV.'
+          }, 415);
+        }
+
         const length = Number(request.headers.get('content-length') || 0);
-        if (length > 15 * 1024 * 1024) return reply({ error: 'Recording imezidi MB 15.' }, 413);
+
+        if (length > 15 * 1024 * 1024) {
+          return reply({
+            error: 'Recording imezidi MB 15.'
+          }, 413);
+        }
+
         const audio = await request.arrayBuffer();
-        if (audio.byteLength > 15 * 1024 * 1024) return reply({ error: 'Recording imezidi MB 15.' }, 413);
+
+        if (audio.byteLength > 15 * 1024 * 1024) {
+          return reply({
+            error: 'Recording imezidi MB 15.'
+          }, 413);
+        }
+
         const id = crypto.randomUUID();
         const key = `references/${id}.${allowed.get(type)}`;
-        await env.MUSIC_BUCKET.put(key, audio, { httpMetadata: { contentType: type } });
-        return reply({ id, url: `/music/${encodeURIComponent(key)}` });
+
+        await env.MUSIC_BUCKET.put(key, audio, {
+          httpMetadata: { contentType: type }
+        });
+
+        return reply({
+          id,
+          url: `/music/${encodeURIComponent(key)}`
+        });
       }
 
+      // AI MUSIC GENERATION
       if (url.pathname === '/api/music/generate' && request.method === 'POST') {
-        if (!env.ELEVENLABS_API_KEY) return reply({ error: 'AI engine bado haijaunganishwa.' }, 503);
+        if (!env.ELEVENLABS_API_KEY) {
+          return reply({
+            error: 'AI engine bado haijaunganishwa.'
+          }, 503);
+        }
+
         const b = await request.json().catch(() => ({}));
         const duration = Math.min(180, Math.max(30, Number(b.duration) || 30));
         const bpm = Math.min(180, Math.max(50, Number(b.bpm) || 96));
-        const prompt = `${String(b.prompt || '').slice(0,1800)}. ${b.genre} style, ${b.mood} mood, ${b.key}, ${bpm} BPM. Instruments: ${String(b.instruments || 'piano, bass and drums').slice(0,300)}. Instrumental only, no lead vocals.`;
-        if (prompt.length < 40) return reply({ error: 'Andika maelezo ya muziki kwanza.' }, 400);
 
-        const ai = await fetch('https://api.elevenlabs.io/v1/music?output_format=mp3_44100_192', {
-          method: 'POST', headers: { 'content-type': 'application/json', 'xi-api-key': env.ELEVENLABS_API_KEY },
-          body: JSON.stringify({ prompt, music_length_ms: duration * 1000, model_id: 'music_v2' })
-        });
-        if (!ai.ok) return reply({ error: `AI generation imeshindwa (${ai.status}). Credits hazitakatwa tena bila kukagua.` }, 502);
+        const prompt = `${String(b.prompt || '').slice(0,1800)}. ${b.genre} style, ${b.mood} mood, ${b.key}, ${bpm} BPM. Instruments: ${String(b.instruments || 'piano, bass and drums').slice(0,300)}. Instrumental only, no lead vocals.`;
+
+        if (prompt.length < 40) {
+          return reply({
+            error: 'Andika maelezo ya muziki kwanza.'
+          }, 400);
+        }
+
+        const ai = await fetch(
+          'https://api.elevenlabs.io/v1/music?output_format=mp3_44100_192',
+          {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'xi-api-key': env.ELEVENLABS_API_KEY
+            },
+            body: JSON.stringify({
+              prompt,
+              music_length_ms: duration * 1000,
+              model_id: 'music_v2'
+            })
+          }
+        );
+
+        if (!ai.ok) {
+          return reply({
+            error: `AI generation imeshindwa (${ai.status}). Credits hazitakatwa tena bila kukagua.`
+          }, 502);
+        }
+
         const id = crypto.randomUUID();
         const key = `generated/${id}.mp3`;
-        await env.MUSIC_BUCKET.put(key, ai.body, { httpMetadata: { contentType: 'audio/mpeg', contentDisposition: `attachment; filename="nyg-ai-${id}.mp3"` } });
-        return reply({ id, url: `/music/${key}` });
+
+        await env.MUSIC_BUCKET.put(key, ai.body, {
+          httpMetadata: {
+            contentType: 'audio/mpeg',
+            contentDisposition: `attachment; filename="nyg-ai-${id}.mp3"`
+          }
+        });
+
+        return reply({
+          id,
+          url: `/music/${key}`
+        });
       }
-      return reply({ error: 'API route haijapatikana.' }, 404);
+
+      return reply({
+        error: 'API route haijapatikana.'
+      }, 404);
     }
-if (url.pathname === "/pay") {
-  try {
-    const tokenRes = await fetch(
-      "https://api.clickpesa.com/third-parties/generate-token",
-      {
-        method: "POST",
-        headers: {
-          "client-id": env.CLICKPESA_CLIENT_ID,
-          "api-key": env.CLICKPESA_API_KEY
+
+    // CLICKPESA - EXISTING PAYMENT ROUTE
+    if (url.pathname === "/pay") {
+      try {
+        const tokenRes = await fetch(
+          "https://api.clickpesa.com/third-parties/generate-token",
+          {
+            method: "POST",
+            headers: {
+              "client-id": env.CLICKPESA_CLIENT_ID,
+              "api-key": env.CLICKPESA_API_KEY
+            }
+          }
+        );
+
+        const tokenData = await tokenRes.json();
+
+        if (!tokenRes.ok || !tokenData.token) {
+          return new Response(JSON.stringify(tokenData), {
+            status: tokenRes.status,
+            headers: { "content-type": "application/json" }
+          });
         }
+
+        const orderReference = "NYG-" + Date.now();
+
+        const checkoutRes = await fetch(
+          "https://api.clickpesa.com/third-parties/checkout-link/generate-checkout-url",
+          {
+            method: "POST",
+            headers: {
+              "Authorization": tokenData.token,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              totalPrice: "1000",
+              orderCurrency: "TZS",
+              orderReference: orderReference,
+              customerName: "NYG Music Customer",
+              customerEmail: "nygcenter1@gmail.com",
+              customerPhone: "255755498731",
+              description: "I'm Still Going On - NYG Music",
+              callbackUrl: "https://nygmusichub.com/",
+              wooCommerceCallbackURL: ""
+            })
+          }
+        );
+
+        const checkoutData = await checkoutRes.json();
+
+        if (!checkoutRes.ok || !checkoutData.checkoutLink) {
+          return new Response(JSON.stringify(checkoutData), {
+            status: checkoutRes.status,
+            headers: { "content-type": "application/json" }
+          });
+        }
+
+        return Response.redirect(checkoutData.checkoutLink, 302);
+
+      } catch (error) {
+        return new Response("ClickPesa error: " + error.message, {
+          status: 500
+        });
       }
-    );
-
-    const tokenData = await tokenRes.json();
-
-    if (!tokenRes.ok || !tokenData.token) {
-      return new Response(JSON.stringify(tokenData), {
-        status: tokenRes.status,
-        headers: { "content-type": "application/json" }
-      });
     }
 
-    const orderReference = "NYG-" + Date.now();
-
-    const checkoutRes = await fetch(
-      "https://api.clickpesa.com/third-parties/checkout-link/generate-checkout-url",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": tokenData.token,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-  totalPrice: "1000",
-          orderCurrency: "TZS",
-  orderReference: orderReference,
-  customerName: "NYG Music Customer",
-  customerEmail: "nygcenter1@gmail.com",
-  customerPhone: "255755498731",
-  description: "I'm Still Going On - NYG Music",
-  callbackUrl: "https://nygmusichub.com/",
-  wooCommerceCallbackURL: ""
-})
-      }
-    );
-
-    const checkoutData = await checkoutRes.json();
-
-    if (!checkoutRes.ok || !checkoutData.checkoutLink) {
-      return new Response(JSON.stringify(checkoutData), {
-        status: checkoutRes.status,
-        headers: { "content-type": "application/json" }
-      });
-    }
-
-    return Response.redirect(checkoutData.checkoutLink, 302);
-
-  } catch (error) {
-    return new Response("ClickPesa error: " + error.message, {
-      status: 500
-    });
-  }
-}
+    // MUSIC FILE DELIVERY
     if (url.pathname.startsWith('/music/')) {
-      if (!await sessionValid(request, env)) return new Response('Unauthorized', { status: 401 });
+      if (!await sessionValid(request, env)) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+
       const key = decodeURIComponent(url.pathname.slice(7));
       const object = await env.MUSIC_BUCKET.get(key);
-      if (!object) return new Response('Audio haijapatikana.', { status: 404 });
-      const headers = new Headers(); object.writeHttpMetadata(headers); headers.set('etag', object.httpEtag);
+
+      if (!object) {
+        return new Response('Audio haijapatikana.', { status: 404 });
+      }
+
+      const headers = new Headers();
+      object.writeHttpMetadata(headers);
+      headers.set('etag', object.httpEtag);
+
       return new Response(object.body, { headers });
     }
 
