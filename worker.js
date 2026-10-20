@@ -1102,7 +1102,9 @@ if (path === '/api/testimonies/admin/delete-comment' &&
       }
 
       const title = videos[videoId];
-      const imageUrl = 'https://nygmusichub.com/nyg-video-hub-cover.jpg';
+      const imageUrl = videoId === 'EwOFoJZerDs'
+  ? 'https://nygmusichub.com/Azzo%20maombi%20cover.jpg'
+  : `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
       const shareUrl = `https://nygmusichub.com/?video=${encodeURIComponent(videoId)}`;
 
       const tags = {
