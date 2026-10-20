@@ -1086,6 +1086,7 @@ if (path === '/api/testimonies/admin/delete-comment' &&
       });
     }
 
+
     // NYG VIDEO HUB - SOCIAL SHARING
     if (path === '/') {
       const newUrl = new URL('/index.html', request.url);
@@ -1095,6 +1096,7 @@ if (path === '/api/testimonies/admin/delete-comment' &&
 
       const videoId = url.searchParams.get('video');
 
+      // Homepage ibaki na metadata yake ya kawaida.
       if (!videoId ||
           !Object.prototype.hasOwnProperty.call(videos, videoId) ||
           !assetResponse.ok) {
@@ -1103,31 +1105,64 @@ if (path === '/api/testimonies/admin/delete-comment' &&
 
       const title = videos[videoId];
       const imageUrl = videoId === 'EwOFoJZerDs'
-  ? 'https://nygmusichub.com/Azzo%20maombi%20cover.jpg'
-  : `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-      const shareUrl = `https://nygmusichub.com/?video=${encodeURIComponent(videoId)}`;
+        ? 'https://www.nygmusichub.com/Azzo%20maombi%20cover.jpg'
+        : `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
+      const shareUrl =
+        `https://www.nygmusichub.com/?video=${encodeURIComponent(videoId)}`;
 
       const tags = {
         'og:title': title + ' | NYG VIDEO HUB',
         'og:description': 'Tazama ' + title + ' kupitia NYG VIDEO HUB.',
         'og:image': imageUrl,
         'og:url': shareUrl,
-        'og:type': 'video.other'
+        'og:type': 'video.other',
+        'twitter:card': 'summary_large_image',
+        'twitter:title': title + ' | NYG VIDEO HUB',
+        'twitter:description': 'Tazama ' + title + ' kupitia NYG VIDEO HUB.',
+        'twitter:image': imageUrl
       };
+
+      const escapeHtml = value => String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;');
 
       const rewriter = new HTMLRewriter();
 
-      for (const [property, content] of Object.entries(tags)) {
-        rewriter.on(`meta[property="${property}"]`, {
-          element(element) {
-            element.setAttribute('content', content);
-          }
-        });
-      }
+      // Ondoa metadata za zamani ili zisishindane.
+      rewriter.on('meta[property^="og:"]', {
+        element(element) {
+          element.remove();
+        }
+      });
+
+      rewriter.on('meta[name^="twitter:"]', {
+        element(element) {
+          element.remove();
+        }
+      });
+
+      // Weka metadata moja sahihi kwa kila video.
+      rewriter.on('head', {
+        element(element) {
+          const meta = Object.entries(tags)
+            .map(([key, value]) => {
+              const attribute = key.startsWith('twitter:')
+                ? 'name'
+                : 'property';
+
+              return `<meta ${attribute}="${key}" content="${escapeHtml(value)}">`;
+            })
+            .join('\n');
+
+          element.append(meta, { html: true });
+        }
+      });
 
       const response = rewriter.transform(assetResponse);
       const headers = new Headers(response.headers);
-      headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+      headers.set('Cache-Control', 'no-store');
 
       return new Response(response.body, {
         status: response.status,
