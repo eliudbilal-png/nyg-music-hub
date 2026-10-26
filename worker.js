@@ -65,6 +65,49 @@ export default {
     const path = url.pathname;
     const method = request.method;
 
+    // NYG EVENTS - READ EVENTS API
+    if (path === '/api/events' && method === 'GET') {
+      try {
+        if (!env.EVENTS_DB) {
+          return reply({ error: 'Events database unavailable' }, 503);
+        }
+
+        const isAdmin = await sessionValid(request, env);
+
+        const sql = isAdmin
+          ? `SELECT id, title, description, event_date,
+                    image_key, video_key, media_url,
+                    status, created_at, updated_at
+             FROM events
+             ORDER BY created_at DESC, id DESC
+             LIMIT 100`
+          : `SELECT id, title, description, event_date,
+                    image_key, video_key, media_url,
+                    status, created_at, updated_at
+             FROM events
+             WHERE status = 'published'
+             ORDER BY created_at DESC, id DESC
+             LIMIT 100`;
+
+        const result = await env.EVENTS_DB
+          .prepare(sql)
+          .all();
+
+        return reply({
+          success: true,
+          events: result.results || []
+        }, 200, {
+          'Cache-Control': 'no-store'
+        });
+
+      } catch (error) {
+        return reply({
+          error: 'Failed to load events'
+        }, 500);
+      }
+    }
+
+
     // NYG VIDEO HUB - PUBLIC VIDEO APIs
     if (path === '/api/video/views' || path === '/api/video/likes' || path === '/api/video/comments') {
       if (method !== 'GET' && method !== 'POST') {
