@@ -1,0 +1,255 @@
+
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>NYG CENTER | EVENTS ADMIN</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+ margin:0;
+ background:#071323;
+ color:white;
+ font-family:Arial,sans-serif;
+ padding:18px;
+}
+
+main{
+ max-width:650px;
+ margin:20px auto;
+ background:#193150;
+ padding:22px;
+ border:1px solid #416a95;
+ border-radius:14px;
+}
+
+h1,h2{text-align:center}
+h1{font-size:25px}
+h2{font-size:20px}
+
+p{
+ color:#c3d8ef;
+ text-align:center;
+ line-height:1.6;
+}
+
+label{
+ display:block;
+ margin:18px 0 7px;
+ font-weight:bold;
+}
+
+input,textarea,select{
+ width:100%;
+ padding:13px;
+ border:1px solid #7193b8;
+ border-radius:8px;
+ background:#0c2039;
+ color:white;
+ font-size:16px;
+}
+
+textarea{
+ min-height:110px;
+ resize:vertical;
+}
+
+button{
+ width:100%;
+ padding:14px;
+ border:0;
+ border-radius:8px;
+ font-size:16px;
+ font-weight:bold;
+ margin-top:20px;
+ background:#14783a;
+ color:white;
+}
+
+button:disabled{
+ opacity:.65;
+ cursor:not-allowed;
+}
+
+.notice{
+ font-size:13px;
+ color:#b9cce1;
+}
+
+.hidden{display:none}
+
+a{color:#b9dcff}
+
+</style>
+</head>
+
+<body>
+
+<main id="loading">
+ <h2>NYG CENTER</h2>
+ <p>Inathibitisha ruhusa za Admin...</p>
+</main>
+
+<main id="denied" class="hidden">
+ <h2>ADMIN LOGIN REQUIRED</h2>
+ <p>Ingia kwanza ili kufungua usimamizi wa matukio.</p>
+ <p>
+  <a href="/nyg-admin.html">
+   FUNGUA CENTRAL ADMIN LOGIN
+  </a>
+ </p>
+</main>
+
+<main id="adminPanel" class="hidden">
+
+<h1>NYG CENTER</h1>
+<h2>MATUKIO YA NYG</h2>
+
+<p>EVENTS MANAGEMENT PANEL</p>
+
+<form id="eventForm">
+
+<label for="eventTitle">
+ JINA LA TUKIO
+</label>
+<input
+ id="eventTitle"
+ type="text"
+ maxlength="150"
+ placeholder="Andika jina la tukio"
+ required
+>
+
+<label for="eventDescription">
+ MAELEZO YA TUKIO
+</label>
+<textarea
+ id="eventDescription"
+ maxlength="5000"
+ placeholder="Andika maelezo ya tukio"
+ required
+></textarea>
+
+<label for="eventDate">
+ TAREHE YA TUKIO
+</label>
+<input
+ id="eventDate"
+ type="date"
+>
+
+<label for="eventImage">
+ PANDISHA PICHA KUTOKA KWENYE SIMU
+</label>
+<input
+ id="eventImage"
+ type="file"
+ accept="image/jpeg,image/png,image/webp"
+>
+
+<label for="eventVideo">
+ PANDISHA VIDEO KUTOKA KWENYE SIMU
+</label>
+<input
+ id="eventVideo"
+ type="file"
+ accept="video/mp4,video/webm,video/quicktime"
+>
+
+<label for="eventLink">
+ LINK YA PICHA AU VIDEO
+</label>
+<input
+ id="eventLink"
+ type="url"
+ placeholder="https://..."
+>
+
+<label for="eventStatus">
+ HALI YA TUKIO
+</label>
+<select id="eventStatus">
+ <option value="draft">
+  DRAFT — Hifadhi bila kuchapisha
+ </option>
+ <option value="published">
+  PUBLISH — Chapisha kwa umma
+ </option>
+</select>
+
+<button type="submit" disabled>
+ HIFADHI TUKIO (IN PREPARATION)
+</button>
+
+</form>
+
+<p class="notice">
+ Mfumo wa kuhifadhi na kuchapisha matukio
+ utaunganishwa na API salama ya NYG CENTER.
+</p>
+
+<p class="notice">
+ Faili unazochagua hazijapandishwa kwenye server.
+</p>
+
+<p>
+ <a href="/nyg-admin.html">
+  RUDI CENTRAL ADMIN
+ </a>
+</p>
+
+</main>
+
+<script>
+const loading=document.getElementById('loading');
+const denied=document.getElementById('denied');
+const panel=document.getElementById('adminPanel');
+
+async function checkAdmin(){
+
+ try{
+
+  const response=await fetch(
+   '/api/testimonies/admin/session',
+   {
+    credentials:'same-origin',
+    cache:'no-store'
+   }
+  );
+
+  if(!response.ok){
+   throw new Error('Session API error');
+  }
+
+  const data=await response.json();
+
+  loading.classList.add('hidden');
+
+  if(data.authenticated===true){
+   panel.classList.remove('hidden');
+  }else{
+   denied.classList.remove('hidden');
+  }
+
+ }catch(error){
+
+  loading.classList.add('hidden');
+  denied.classList.remove('hidden');
+
+ }
+}
+
+document.getElementById('eventForm')
+ .addEventListener('submit',function(e){
+  e.preventDefault();
+ });
+
+checkAdmin();
+</script>
+
+</body>
+</html>
