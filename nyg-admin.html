@@ -5,9 +5,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>NYG CENTER | ADMIN</title>
+  <title>NYG CENTER | CENTRAL ADMIN</title>
+
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       min-height: 100vh;
@@ -18,6 +22,7 @@
       place-items: center;
       padding: 20px;
     }
+
     main {
       width: 100%;
       max-width: 430px;
@@ -27,16 +32,199 @@
       padding: 28px 20px;
       text-align: center;
     }
-    h1 { font-size: 24px; }
-    p { color: #c3d8ef; line-height: 1.6; }
+
+    h1 {
+      font-size: 24px;
+    }
+
+    h2 {
+      font-size: 19px;
+    }
+
+    p {
+      color: #c3d8ef;
+      line-height: 1.6;
+    }
+
+    label {
+      display: block;
+      text-align: left;
+      margin: 20px 0 8px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 13px;
+      background: #071323;
+      color: white;
+      border: 1px solid #7b9fc4;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      padding: 13px;
+      margin-top: 18px;
+      border: 0;
+      border-radius: 8px;
+      background: #14783a;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .65;
+      cursor: wait;
+    }
+
+    #message {
+      min-height: 25px;
+    }
+
+    #dashboard[hidden],
+    #loginForm[hidden] {
+      display: none;
+    }
   </style>
 </head>
+
 <body>
-  <main>
-    <h1>NYG CENTER</h1>
-    <h2>CENTRAL ADMIN</h2>
-    <p>Private Administration System</p>
-    <p>Mfumo wa usimamizi unaandaliwa.</p>
-  </main>
+
+<main>
+  <h1>NYG CENTER</h1>
+  <h2>CENTRAL ADMIN</h2>
+
+  <p>Private Administration System</p>
+
+  <form id="loginForm" hidden>
+    <label for="code">ADMIN ACCESS CODE</label>
+
+    <input
+      id="code"
+      type="password"
+      autocomplete="current-password"
+      required
+    >
+
+    <button id="loginButton" type="submit">
+      INGIA (LOGIN)
+    </button>
+  </form>
+
+  <section id="dashboard" hidden>
+    <p>Umeingia kama msimamizi.</p>
+    <p>Central Dashboard inaandaliwa.</p>
+
+    <button id="logoutButton" type="button">
+      TOKA (LOGOUT)
+    </button>
+  </section>
+
+  <p id="message" role="status" aria-live="polite">
+    Inakagua session...
+  </p>
+</main>
+
+<script>
+  const form = document.getElementById('loginForm');
+  const dashboard = document.getElementById('dashboard');
+  const message = document.getElementById('message');
+  const code = document.getElementById('code');
+  const loginButton = document.getElementById('loginButton');
+
+  function show(authenticated) {
+    form.hidden = authenticated;
+    dashboard.hidden = !authenticated;
+    code.value = '';
+    message.textContent = '';
+  }
+
+  async function checkSession() {
+    try {
+      const res = await fetch(
+        '/api/testimonies/admin/session',
+        {
+          credentials: 'same-origin',
+          cache: 'no-store'
+        }
+      );
+
+      if (!res.ok) {
+        throw Error('Session API haipatikani.');
+      }
+
+      const data = await res.json();
+      show(data.authenticated === true);
+
+    } catch (e) {
+      show(false);
+      message.textContent =
+        'Imeshindikana kukagua session. Jaribu tena.';
+    }
+  }
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+
+    loginButton.disabled = true;
+    message.textContent = 'Inaingia...';
+
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          code: code.value
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.ok !== true) {
+        throw Error(
+          data.error || 'Login imeshindikana.'
+        );
+      }
+
+      await checkSession();
+
+    } catch (err) {
+      message.textContent =
+        err.message || 'Login imeshindikana.';
+
+    } finally {
+      loginButton.disabled = false;
+    }
+  });
+
+  document.getElementById('logoutButton')
+    .addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/admin/logout', {
+          method: 'POST',
+          credentials: 'same-origin'
+        });
+
+        if (!res.ok) {
+          throw Error('Logout imeshindikana.');
+        }
+
+        show(false);
+
+      } catch (err) {
+        message.textContent = err.message;
+      }
+    });
+
+  checkSession();
+</script>
+
 </body>
 </html>
