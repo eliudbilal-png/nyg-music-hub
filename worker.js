@@ -108,6 +108,57 @@ export default {
     }
 
 
+    // NYG EVENTS - ADMIN CREATE DRAFT
+    if (path === '/api/events/admin/create' && method === 'POST') {
+      if (!(await sessionValid(request, env))) {
+        return reply({ error: 'Tafadhali ingia kama admin.' }, 401);
+      }
+
+      if (!sameOrigin(request, url)) {
+        return reply({ error: 'Forbidden origin' }, 403);
+      }
+
+      if (!env.EVENTS_DB) {
+        return reply({ error: 'Events database unavailable' }, 503);
+      }
+
+      const data = await request.json().catch(() => null);
+
+      const title = typeof data?.title === 'string'
+        ? data.title.trim() : '';
+      const description = typeof data?.description === 'string'
+        ? data.description.trim() : '';
+      const eventDate = typeof data?.event_date === 'string'
+        ? data.event_date.trim() : '';
+
+      if (!title || !description ||
+          title.length > 200 || description.length > 10000) {
+        return reply({ error: 'Kagua kichwa na maelezo ya tukio.' }, 400);
+      }
+
+      if (eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+        return reply({ error: 'Tarehe si sahihi.' }, 400);
+      }
+
+      try {
+        const result = await env.EVENTS_DB.prepare(`
+          INSERT INTO events
+            (title, description, event_date, status)
+          VALUES (?, ?, ?, 'draft')
+        `).bind(title, description, eventDate || null).run();
+
+        return reply({
+          success: true,
+          event_id: result.meta?.last_row_id,
+          status: 'draft',
+          message: 'Tukio limehifadhiwa kama Draft.'
+        }, 201);
+      } catch (error) {
+        console.error('NYG event create error:', error);
+        return reply({ error: 'Imeshindikana kuhifadhi tukio.' }, 500);
+      }
+    }
+
     // NYG VIDEO HUB - PUBLIC VIDEO APIs
     if (path === '/api/video/views' || path === '/api/video/likes' || path === '/api/video/comments') {
       if (method !== 'GET' && method !== 'POST') {
