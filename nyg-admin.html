@@ -126,6 +126,23 @@
     <h3>MATUKIO YA NYG</h3>
     <p>Picha, video, link na maelezo ya matukio.</p>
 
+<form id="eventForm">
+  <label for="eventTitle">KICHWA CHA TUKIO</label>
+  <input id="eventTitle" type="text" maxlength="200" required>
+
+  <label for="eventDescription">MAELEZO YA TUKIO</label>
+  <textarea id="eventDescription" rows="5" maxlength="10000" required></textarea>
+
+  <label for="eventDate">TAREHE YA TUKIO</label>
+  <input id="eventDate" type="date">
+
+  <button type="submit" id="saveEventButton">
+    HIFADHI KAMA DRAFT
+  </button>
+
+  <p id="eventMessage" role="status"></p>
+</form>
+
     <hr>
 
     <h3>FURSA ZA KAZI</h3>
@@ -256,6 +273,45 @@
 
       } catch (err) {
         message.textContent = err.message;
+      }
+    });
+
+  // NYG EVENTS - SAVE DRAFT
+  document.getElementById('eventForm')
+    .addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const button = document.getElementById('saveEventButton');
+      const status = document.getElementById('eventMessage');
+
+      button.disabled = true;
+      status.textContent = 'Inahifadhi tukio...';
+
+      try {
+        const res = await fetch('/api/events/admin/create', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: document.getElementById('eventTitle').value.trim(),
+            description: document.getElementById('eventDescription').value.trim(),
+            event_date: document.getElementById('eventDate').value
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || data.success !== true) {
+          throw new Error(data.error || 'Imeshindikana kuhifadhi tukio.');
+        }
+
+        status.textContent = 'Tukio limehifadhiwa kama Draft. ID: ' + data.event_id;
+        e.target.reset();
+
+      } catch (error) {
+        status.textContent = error.message || 'Hitilafu imetokea.';
+      } finally {
+        button.disabled = false;
       }
     });
 
