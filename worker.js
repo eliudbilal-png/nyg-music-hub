@@ -64,7 +64,104 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
+// NYG EVENTS - FUNGUA PICHA AU VIDEO
+const eventMedia = path.match(
+  /^\/api\/events\/media\/(\d+)\/(image|video)$/
+);
 
+if (eventMedia && (method === 'GET' || method === 'HEAD')) {
+  if (!env.EVENTS_DB || !env.EVENTS_BUCKET) {
+    return reply({ error: 'Hifadhi haijaunganishwa.' }, 503);
+  }
+
+  const id = Number(eventMedia[1]);
+
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return reply({ error: 'ID si sahihi.' }, 400);
+  }
+
+  try {
+    const event = await env.EVENTS_DB.prepare(
+      'SELECT status, image_key, video_key FROM events WHERE id = ?'
+    ).bind(id).first();
+
+    if (!event ||
+        (event.status !== 'published' &&
+         !(await sessionValid(request, env)))) {
+      return reply({ error: 'Faili haijapatikana.' }, 404);
+    }
+
+    const key = eventMedia[2] === 'image'
+      ? event.image_key
+      : event.video_key;
+
+    if (!key) {
+      return reply({ error: 'Faili haijapatikana.' }, 404);
+    }
+
+    const object = await env.EVENTS_BUCKET.get(key);
+
+    if (!object) {
+      return reply({ error: 'Faili haijapatikana.' }, 404);
+    }
+
+    const headers = new Headers();
+    object.writeHttpMetadata(headers);
+    headers.set('Cache-Control', 'private, no-store');
+    headers.set('X-Content-Type-Options', 'nosniff');
+
+    return new Response(
+      method === 'HEAD' ? null : object.body,
+      { headers }
+    );
+
+  } catch (error) {
+    console.error('Event media error:', error);
+    return reply({ error: 'Imeshindikana kufungua faili.' }, 500);
+  }
+}
+
+// NYG EVENTS - ADMIN PUBLISH
+if (path === '/api/events/admin/publish' && method === 'POST') {
+  if (!(await sessionValid(request, env))) {
+    return reply({ error: 'Tafadhali ingia kama admin.' }, 401);
+  }
+
+  if (!sameOrigin(request, url)) {
+    return reply({ error: 'Forbidden origin' }, 403);
+  }
+
+  if (!env.EVENTS_DB) {
+    return reply({ error: 'Database haijaunganishwa.' }, 503);
+  }
+
+  const data = await request.json().catch(() => null);
+  const id = Number(data?.event_id);
+
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return reply({ error: 'ID si sahihi.' }, 400);
+  }
+
+  try {
+    const result = await env.EVENTS_DB.prepare(
+      "UPDATE events SET status = 'published', updated_at = datetime('now') WHERE id = ? AND status = 'draft'"
+    ).bind(id).run();
+
+    if (result.meta?.changes !== 1) {
+      return reply({ error: 'Draft haijapatikana.' }, 404);
+    }
+
+    return reply({
+      success: true,
+      event_id: id,
+      status: 'published'
+    });
+
+  } catch (error) {
+    console.error('Event publish error:', error);
+    return reply({ error: 'Imeshindikana kuchapisha tukio.' }, 500);
+  }
+}
     // NYG EVENTS - READ EVENTS API
     if (path === '/api/events' && method === 'GET') {
       try {
