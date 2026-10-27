@@ -108,7 +108,7 @@ export default {
     }
 
 
-    // NYG EVENTS - ADMIN CREATE DRAFT
+        // NYG EVENTS - ADMIN CREATE DRAFT
     if (path === '/api/events/admin/create' && method === 'POST') {
       if (!(await sessionValid(request, env))) {
         return reply({ error: 'Tafadhali ingia kama admin.' }, 401);
@@ -126,26 +126,53 @@ export default {
 
       const title = typeof data?.title === 'string'
         ? data.title.trim() : '';
+
       const description = typeof data?.description === 'string'
         ? data.description.trim() : '';
+
       const eventDate = typeof data?.event_date === 'string'
         ? data.event_date.trim() : '';
 
+      const mediaUrl = typeof data?.media_url === 'string'
+        ? data.media_url.trim() : '';
+
       if (!title || !description ||
           title.length > 200 || description.length > 10000) {
-        return reply({ error: 'Kagua kichwa na maelezo ya tukio.' }, 400);
+        return reply({
+          error: 'Kagua kichwa na maelezo ya tukio.'
+        }, 400);
       }
 
       if (eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
         return reply({ error: 'Tarehe si sahihi.' }, 400);
       }
 
+      if (mediaUrl) {
+        if (mediaUrl.length > 2048) {
+          return reply({ error: 'Link ni ndefu mno.' }, 400);
+        }
+
+        try {
+          const link = new URL(mediaUrl);
+          if (!['http:', 'https:'].includes(link.protocol)) {
+            throw new Error('Invalid protocol');
+          }
+        } catch {
+          return reply({ error: 'Link si sahihi.' }, 400);
+        }
+      }
+
       try {
         const result = await env.EVENTS_DB.prepare(`
           INSERT INTO events
-            (title, description, event_date, status)
-          VALUES (?, ?, ?, 'draft')
-        `).bind(title, description, eventDate || null).run();
+            (title, description, event_date, media_url, status)
+          VALUES (?, ?, ?, ?, 'draft')
+        `).bind(
+          title,
+          description,
+          eventDate || null,
+          mediaUrl || null
+        ).run();
 
         return reply({
           success: true,
@@ -155,7 +182,9 @@ export default {
         }, 201);
       } catch (error) {
         console.error('NYG event create error:', error);
-        return reply({ error: 'Imeshindikana kuhifadhi tukio.' }, 500);
+        return reply({
+          error: 'Imeshindikana kuhifadhi tukio.'
+        }, 500);
       }
     }
 
