@@ -155,7 +155,16 @@
 
   <p id="eventMessage" role="status"></p>
 </form>
+<hr>
 
+<h3>MATUKIO YALIYOHIFADHIWA</h3>
+
+<button type="button" id="loadEventsButton">
+  ONYESHA MATUKIO
+</button>
+
+<p id="eventsListMessage" role="status"></p>
+<div id="eventsList"></div>
     <hr>
 
     <h3>FURSA ZA KAZI</h3>
@@ -360,7 +369,136 @@ document.getElementById('eventForm')
       button.disabled = false;
     }
   });
+// NYG EVENTS - ONYESHA NA CHAPISHA
+document.getElementById('loadEventsButton')
+  .addEventListener('click', loadEvents);
 
+async function loadEvents() {
+  const list = document.getElementById('eventsList');
+  const message = document.getElementById('eventsListMessage');
+
+  list.replaceChildren();
+  message.textContent = 'Inapakia matukio...';
+
+  try {
+    const res = await fetch('/api/events', {
+      credentials: 'same-origin',
+      cache: 'no-store'
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !Array.isArray(data.events)) {
+      throw new Error(data.error || 'Matukio hayajapatikana.');
+    }
+
+    message.textContent = data.events.length
+      ? ''
+      : 'Hakuna matukio yaliyohifadhiwa.';
+
+    for (const event of data.events) {
+      const id = Number(event.id);
+      if (!Number.isSafeInteger(id) || id < 1) continue;
+
+      const card = document.createElement('div');
+      card.style.cssText =
+        'text-align:left;border:1px solid #7b9fc4;' +
+        'border-radius:8px;padding:14px;margin:16px 0;';
+
+      const title = document.createElement('h3');
+      title.textContent = event.title;
+      card.appendChild(title);
+
+      const details = document.createElement('p');
+      details.textContent = event.description;
+      card.appendChild(details);
+
+      const info = document.createElement('p');
+      info.textContent =
+        'ID: ' + id +
+        ' | Tarehe: ' + (event.event_date || 'Haijawekwa') +
+        ' | Hali: ' + event.status;
+      card.appendChild(info);
+
+      if (event.image_key) {
+        const image = document.createElement('img');
+        image.src = '/api/events/media/' + id + '/image';
+        image.alt = event.title || 'Picha ya tukio';
+        image.style.cssText = 'width:100%;border-radius:8px;';
+        card.appendChild(image);
+      }
+
+      if (event.video_key) {
+        const video = document.createElement('video');
+        video.src = '/api/events/media/' + id + '/video';
+        video.controls = true;
+        video.preload = 'metadata';
+        video.style.width = '100%';
+        card.appendChild(video);
+      }
+
+      if (event.media_url) {
+        try {
+          const url = new URL(event.media_url);
+
+          if (url.protocol === 'http:' || url.protocol === 'https:') {
+            const link = document.createElement('a');
+            link.href = url.href;
+            link.textContent = 'FUNGUA LINK YA TUKIO';
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.style.color = '#fff';
+            card.appendChild(link);
+          }
+        } catch {
+          // Link isiyo sahihi haionyeshwi.
+        }
+      }
+
+      if (event.status === 'draft') {
+        const publish = document.createElement('button');
+        publish.type = 'button';
+        publish.textContent = 'CHAPISHA TUKIO';
+
+        publish.addEventListener('click', async () => {
+          if (!confirm('Unataka kuchapisha tukio hili kwa umma?')) {
+            return;
+          }
+
+          publish.disabled = true;
+
+          try {
+            const response = await fetch('/api/events/admin/publish', {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ event_id: id })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || result.success !== true) {
+              throw new Error(result.error || 'Kuchapisha kumeshindikana.');
+            }
+
+            await loadEvents();
+
+          } catch (error) {
+            message.textContent = error.message || 'Hitilafu imetokea.';
+            publish.disabled = false;
+          }
+        });
+
+        card.appendChild(publish);
+      }
+
+      list.appendChild(card);
+    }
+
+  } catch (error) {
+    message.textContent = error.message || 'Hitilafu imetokea.';
+  }
+}
   checkSession();
 </script>
 
