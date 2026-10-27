@@ -64,7 +64,246 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
-// NYG EVENTS - FUNGUA PICHA AU VIDEO
+// NYG EVENTS - EDIT NA DELETE
+if (
+  ['/api/events/admin/update', '/api/events/admin/delete'].includes(path) &&
+  method === 'POST'
+) {
+  if (!(await sessionValid(request, env))) {
+    return reply({ error: 'Tafadhali ingia kama admin.' }, 401);
+  }
+
+  if (!sameOrigin(request, url)) {
+    return reply({ error: 'Forbidden origin' }, 403);
+  }
+
+  if (!env.EVENTS_DB) {
+    return reply({ error: 'Database haijaunganishwa.' }, 503);
+  }
+
+  const multipart = (request.headers.get('content-type') || '')
+    .startsWith('multipart/form-data');
+
+  let form = null;
+
+  if (multipart) {
+    const length = Number(request.headers.get('content-length'));
+
+    if (!length || length > 55 * 1024 * 1024) {
+      return reply({ error: 'Ukubwa wa faili haukubaliki.' }, 413);
+    }
+
+    form = await request.formData().catch(() => null);
+  }
+
+  const data = multipart
+    ? (form ? Object.fromEntries(form.entries()) : null)
+    : await request.json().catch(() => null);
+
+  const id = Number(data?.event_id);
+
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return reply({ error: 'ID si sahihi.' }, 400);
+  }
+
+  try {
+    const event = await env.EVENTS_DB.prepare(
+      'SELECT image_key, video_key FROM events WHERE id = ?'
+    ).bind(id).first();
+
+    if (!event) {
+      return reply({ error: 'Tukio halijapatikana.' }, 404);
+    }
+
+    // HARIRI TUKIO
+    if (path.endsWith('/update')) {
+      const title = typeof data.title === 'string'
+        ? data.title.trim() : '';
+
+      const description = typeof data.description === 'string'
+        ? data.description.trim() : '';
+
+      const date = typeof data.event_date === 'string'
+        ? data.event_date.trim() : '';
+
+      const link = typeof data.media_url === 'string'
+        ? data.media_url.trim() : '';
+
+      if (!title || title.length > 200 ||
+          !description || description.length > 10000) {
+        return reply({ error: 'Kagua kichwa na maelezo.' }, 400);
+      }
+
+      if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return reply({ error: 'Tarehe si sahihi.' }, 400);
+      }
+
+      if (link) {
+        try {
+          if (
+            link.length > 2048 ||
+            !['http:', 'https:'].includes(new URL(link).protocol)
+          ) {
+            throw new Error();
+          }
+        } catch {
+          return reply({ error: 'Link si sahihi.' }, 400);
+        }
+      }
+
+      const files = [];
+
+      for (const [field, allowed, limit] of [
+        [
+          'image',
+          ['image/jpeg', 'image/png', 'image/webp'],
+          5 * 1024 * 1024
+        ],
+        [
+          'video',
+          ['video/mp4', 'video/webm', 'video/quicktime'],
+          50 * 1024 * 1024
+        ]
+      ]) {
+        const file = form?.get(field);
+
+        if (!file) continue;
+
+        if (
+          typeof file === 'string' ||
+          !allowed.includes(file.type) ||
+          !file.size ||
+          file.size > limit
+        ) {
+          return reply({
+            error: 'Faili si sahihi au ni kubwa mno.'
+          }, 400);
+        }
+
+        files.push({
+          field,
+          file,
+          key: `events/${field}/${crypto.randomUUID()}`
+        });
+      }
+
+      if (files.length && !env.EVENTS_BUCKET) {
+        return reply({
+          error: 'Hifadhi ya faili haijaunganishwa.'
+        }, 503);
+      }
+
+      const uploaded = [];
+
+      try {
+        for (const item of files) {
+          await env.EVENTS_BUCKET.put(
+            item.key,
+            await item.file.arrayBuffer(),
+            {
+              httpMetadata: {
+                contentType: item.file.type
+              }
+            }
+          );
+
+          uploaded.push(item.key);
+        }
+
+        const image = files.find(item => item.field === 'image');
+        const video = files.find(item => item.field === 'video');
+
+        const result = await env.EVENTS_DB.prepare(`
+          UPDATE events
+          SET title = ?, description = ?, event_date = ?,
+              media_url = ?, image_key = ?, video_key = ?,
+              updated_at = datetime('now')
+          WHERE id = ? AND image_key IS ? AND video_key IS ?
+        `).bind(
+          title,
+          description,
+          date || null,
+          link || null,
+          image?.key || event.image_key,
+          video?.key || event.video_key,
+          id,
+          event.image_key,
+          event.video_key
+        ).run();
+
+        if (result.meta?.changes !== 1) {
+          throw new Error('Tukio limebadilika; jaribu tena.');
+        }
+
+      } catch (error) {
+        await Promise.allSettled(
+          uploaded.map(key => env.EVENTS_BUCKET.delete(key))
+        );
+
+        throw error;
+      }
+
+      const old = files.map(item =>
+        item.field === 'image' ? event.image_key : event.video_key
+      ).filter(Boolean);
+
+      const removed = await Promise.allSettled(
+        old.map(key => env.EVENTS_BUCKET.delete(key))
+      );
+
+      return reply({
+        success: true,
+        cleanup_pending: removed.some(item => item.status === 'rejected')
+      });
+    }
+
+    // FUTA TUKIO
+    if ((event.image_key || event.video_key) && !env.EVENTS_BUCKET) {
+      return reply({ error: 'Hifadhi ya faili haijaunganishwa.' }, 503);
+    }
+
+    const result = await env.EVENTS_DB.prepare(
+      'DELETE FROM events WHERE id = ?'
+    ).bind(id).run();
+
+    if (result.meta?.changes !== 1) {
+      return reply({ error: 'Tukio halijapatikana.' }, 404);
+    }
+
+    const keys = [event.image_key, event.video_key].filter(Boolean);
+
+    const cleanup = await Promise.allSettled(
+      keys.map(key => env.EVENTS_BUCKET.delete(key))
+    );
+
+    const failedKeys = keys.filter(
+      (key, i) => cleanup[i].status === 'rejected'
+    );
+
+    if (failedKeys.length) {
+      console.error('Event delete: cleanup failed for keys', failedKeys);
+
+      return reply({
+        success: true,
+        cleanup_pending: true,
+        message: 'Tukio limefutwa; baadhi ya faili zinahitaji kufutwa kwenye hifadhi.'
+      });
+    }
+
+    return reply({
+      success: true,
+      cleanup_pending: false
+    });
+
+  } catch (error) {
+    console.error('Event management error:', error);
+
+    return reply({
+      error: 'Imeshindikana kukamilisha ombi.'
+    }, 500);
+  }
+}
+    // NYG EVENTS - FUNGUA PICHA AU VIDEO
 const eventMedia = path.match(
   /^\/api\/events\/media\/(\d+)\/(image|video)$/
 );
