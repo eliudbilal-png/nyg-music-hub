@@ -1035,64 +1035,71 @@ form.addEventListener('submit', (event) => {
       const id = Number(event.id);
       if (!Number.isSafeInteger(id) || id < 1) continue;
 
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.style.cssText =
-        'font-size:14px;line-height:1.6;margin-bottom:20px;';
+      const card = document.createElement('details');
+card.className = 'card';
+card.style.cssText = 'margin-bottom:20px;line-height:1.6;';
 
-      const title = document.createElement('h2');
-      title.textContent = event.title || 'TUKIO LA NYG';
-      card.appendChild(title);
+const summary = document.createElement('summary');
+summary.style.cssText = 'cursor:pointer;display:flex;align-items:center;gap:14px;';
 
-      if (event.event_date) {
-        const date = document.createElement('p');
-        date.textContent = 'Tarehe: ' + event.event_date;
-        card.appendChild(date);
-      }
+if (event.image_key) {
+  const thumb = document.createElement('img');
+  thumb.src = '/api/events/media/' + id + '/image';
+  thumb.alt = '';
+  thumb.style.cssText = 'width:95px;height:95px;object-fit:cover;border-radius:8px;';
+  summary.appendChild(thumb);
+}
 
-      const description = document.createElement('p');
-      description.textContent = event.description || '';
-      description.style.whiteSpace = 'pre-wrap';
-      card.appendChild(description);
+const title = document.createElement('strong');
+title.textContent = event.title || 'TUKIO LA NYG';
+summary.appendChild(title);
+card.appendChild(summary);
 
-      if (event.image_key) {
-        const image = document.createElement('img');
-        image.src = '/api/events/media/' + id + '/image';
-        image.alt = event.title || 'Picha ya tukio';
-        image.style.cssText =
-          'width:100%;max-width:700px;height:auto;border-radius:12px;';
-        card.appendChild(image);
-      }
+if (event.image_key) {
+  const image = document.createElement('img');
+  image.src = '/api/events/media/' + id + '/image';
+  image.alt = event.title || 'Picha ya tukio';
+  image.style.cssText = 'width:100%;max-width:700px;height:auto;border-radius:12px;margin-top:12px;';
+  card.appendChild(image);
+}
 
-      if (event.video_key) {
-        const video = document.createElement('video');
-        video.src = '/api/events/media/' + id + '/video';
-        video.controls = true;
-        video.preload = 'metadata';
-        video.style.cssText = 'width:100%;max-width:700px;margin-top:12px;';
-        card.appendChild(video);
-      }
+if (event.event_date) {
+  const date = document.createElement('p');
+  date.textContent = 'Tarehe: ' + event.event_date;
+  card.appendChild(date);
+}
 
-      if (event.media_url) {
-        try {
-          const url = new URL(event.media_url);
+const description = document.createElement('p');
+description.textContent = event.description || '';
+description.style.whiteSpace = 'pre-wrap';
+card.appendChild(description);
 
-          if (url.protocol === 'http:' || url.protocol === 'https:') {
-            const paragraph = document.createElement('p');
-            const link = document.createElement('a');
-            link.href = url.href;
-            link.textContent = 'FUNGUA LINK YA TUKIO';
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            paragraph.appendChild(link);
-            card.appendChild(paragraph);
-          }
-        } catch {
-          // Link isiyo sahihi haionyeshwi.
-        }
-      }
+if (event.video_key) {
+  const video = document.createElement('video');
+  video.src = '/api/events/media/' + id + '/video';
+  video.controls = true;
+  video.preload = 'none';
+  video.style.cssText = 'width:100%;max-width:700px;margin-top:12px;';
+  card.appendChild(video);
+}
 
-      container.appendChild(card);
+if (event.media_url) {
+  try {
+    const linkUrl = new URL(event.media_url);
+    if (['http:', 'https:'].includes(linkUrl.protocol)) {
+      const paragraph = document.createElement('p');
+      const link = document.createElement('a');
+      link.href = linkUrl.href;
+      link.textContent = 'FUNGUA LINK YA TUKIO';
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      paragraph.appendChild(link);
+      card.appendChild(paragraph);
+    }
+  } catch {}
+}
+
+container.appendChild(card);
     }
   } catch (error) {
     console.error('Matukio hayajapatikana:', error);
