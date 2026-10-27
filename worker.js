@@ -109,84 +109,178 @@ export default {
 
 
         // NYG EVENTS - ADMIN CREATE DRAFT
-    if (path === '/api/events/admin/create' && method === 'POST') {
-      if (!(await sessionValid(request, env))) {
-        return reply({ error: 'Tafadhali ingia kama admin.' }, 401);
+if (path === '/api/events/admin/create' && method === 'POST') {
+  if (!(await sessionValid(request, env))) {
+    return reply({ error: 'Tafadhali ingia kama admin.' }, 401);
+  }
+
+  if (!sameOrigin(request, url)) {
+    return reply({ error: 'Forbidden origin' }, 403);
+  }
+
+  if (!env.EVENTS_DB) {
+    return reply({ error: 'Events database unavailable' }, 503);
+  }
+
+  const isMultipart = (request.headers.get('content-type') || '')
+    .toLowerCase()
+    .startsWith('multipart/form-data');
+
+  const maxTotal = 55 * 1024 * 1024;
+  let formData = null;
+  let data;
+
+  if (isMultipart) {
+    const length = Number(request.headers.get('content-length'));
+
+    if (!Number.isFinite(length) || length <= 0 || length > maxTotal) {
+      return reply({ error: 'Ukubwa wa faili haukubaliki.' }, 413);
+    }
+
+    try {
+      formData = await request.formData();
+      data = Object.fromEntries(formData.entries());
+    } catch {
+      return reply({ error: 'Taarifa za faili si sahihi.' }, 400);
+    }
+  } else {
+    data = await request.json().catch(() => null);
+  }
+
+  const title = typeof data?.title === 'string'
+    ? data.title.trim() : '';
+
+  const description = typeof data?.description === 'string'
+    ? data.description.trim() : '';
+
+  const eventDate = typeof data?.event_date === 'string'
+    ? data.event_date.trim() : '';
+
+  const mediaUrl = typeof data?.media_url === 'string'
+    ? data.media_url.trim() : '';
+
+  if (!title || !description ||
+      title.length > 200 || description.length > 10000) {
+    return reply({
+      error: 'Kagua kichwa na maelezo ya tukio.'
+    }, 400);
+  }
+
+  if (eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+    return reply({ error: 'Tarehe si sahihi.' }, 400);
+  }
+
+  if (mediaUrl) {
+    if (mediaUrl.length > 2048) {
+      return reply({ error: 'Link ni ndefu mno.' }, 400);
+    }
+
+    try {
+      const link = new URL(mediaUrl);
+
+      if (!['http:', 'https:'].includes(link.protocol)) {
+        throw new Error('Invalid protocol');
+      }
+    } catch {
+      return reply({ error: 'Link si sahihi.' }, 400);
+    }
+  }
+
+  const files = [];
+
+  if (formData) {
+    for (const [field, allowed, limit] of [
+      [
+        'image',
+        ['image/jpeg', 'image/png', 'image/webp'],
+        5 * 1024 * 1024
+      ],
+      [
+        'video',
+        ['video/mp4', 'video/webm', 'video/quicktime'],
+        50 * 1024 * 1024
+      ]
+    ]) {
+      const value = formData.get(field);
+
+      if (!value ||
+          (typeof value !== 'string' && !value.name && !value.size)) {
+        continue;
       }
 
-      if (!sameOrigin(request, url)) {
-        return reply({ error: 'Forbidden origin' }, 403);
-      }
-
-      if (!env.EVENTS_DB) {
-        return reply({ error: 'Events database unavailable' }, 503);
-      }
-
-      const data = await request.json().catch(() => null);
-
-      const title = typeof data?.title === 'string'
-        ? data.title.trim() : '';
-
-      const description = typeof data?.description === 'string'
-        ? data.description.trim() : '';
-
-      const eventDate = typeof data?.event_date === 'string'
-        ? data.event_date.trim() : '';
-
-      const mediaUrl = typeof data?.media_url === 'string'
-        ? data.media_url.trim() : '';
-
-      if (!title || !description ||
-          title.length > 200 || description.length > 10000) {
+      if (typeof value === 'string' ||
+          !allowed.includes(value.type) ||
+          !value.size ||
+          value.size > limit) {
         return reply({
-          error: 'Kagua kichwa na maelezo ya tukio.'
+          error: `Faili ya ${field} si sahihi au ni kubwa mno.`
         }, 400);
       }
 
-      if (eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
-        return reply({ error: 'Tarehe si sahihi.' }, 400);
-      }
-
-      if (mediaUrl) {
-        if (mediaUrl.length > 2048) {
-          return reply({ error: 'Link ni ndefu mno.' }, 400);
-        }
-
-        try {
-          const link = new URL(mediaUrl);
-          if (!['http:', 'https:'].includes(link.protocol)) {
-            throw new Error('Invalid protocol');
-          }
-        } catch {
-          return reply({ error: 'Link si sahihi.' }, 400);
-        }
-      }
-
-      try {
-        const result = await env.EVENTS_DB.prepare(`
-          INSERT INTO events
-            (title, description, event_date, media_url, status)
-          VALUES (?, ?, ?, ?, 'draft')
-        `).bind(
-          title,
-          description,
-          eventDate || null,
-          mediaUrl || null
-        ).run();
-
-        return reply({
-          success: true,
-          event_id: result.meta?.last_row_id,
-          status: 'draft',
-          message: 'Tukio limehifadhiwa kama Draft.'
-        }, 201);
-      } catch (error) {
-        console.error('NYG event create error:', error);
-        return reply({
-          error: 'Imeshindikana kuhifadhi tukio.'
-        }, 500);
-      }
+      files.push({
+        field,
+        value,
+        key: `events/${field}/${crypto.randomUUID()}`
+      });
     }
+  }
+
+  if (files.length && !env.EVENTS_BUCKET) {
+    return reply({
+      error: 'Hifadhi ya faili haijaunganishwa.'
+    }, 503);
+  }
+
+  const uploaded = [];
+
+  try {
+    for (const file of files) {
+      await env.EVENTS_BUCKET.put(
+        file.key,
+        await file.value.arrayBuffer(),
+        {
+          httpMetadata: {
+            contentType: file.value.type
+          }
+        }
+      );
+
+      uploaded.push(file.key);
+    }
+
+    const result = await env.EVENTS_DB.prepare(`
+      INSERT INTO events
+        (title, description, event_date, media_url,
+         image_key, video_key, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'draft')
+    `).bind(
+      title,
+      description,
+      eventDate || null,
+      mediaUrl || null,
+      files.find(file => file.field === 'image')?.key || null,
+      files.find(file => file.field === 'video')?.key || null
+    ).run();
+
+    return reply({
+      success: true,
+      event_id: result.meta?.last_row_id,
+      status: 'draft',
+      message: 'Tukio limehifadhiwa kama Draft.'
+    }, 201);
+
+  } catch (error) {
+    await Promise.allSettled(
+      uploaded.map(key => env.EVENTS_BUCKET.delete(key))
+    );
+
+    console.error('NYG event create error:', error);
+
+    return reply({
+      error: 'Imeshindikana kuhifadhi tukio.'
+    }, 500);
+  }
+}
 
     // NYG VIDEO HUB - PUBLIC VIDEO APIs
     if (path === '/api/video/views' || path === '/api/video/likes' || path === '/api/video/comments') {
