@@ -135,19 +135,20 @@
 
   <label for="eventDate">TAREHE YA TUKIO</label>
   <input id="eventDate" type="date">
+
   <label for="eventImage">PANDISHA PICHA</label>
   <input id="eventImage" type="file"
-         accept="image/jpeg,image/png,image/webp" disabled>
+         accept="image/jpeg,image/png,image/webp">
 
   <label for="eventVideo">PANDISHA VIDEO</label>
   <input id="eventVideo" type="file"
-         accept="video/mp4,video/webm,video/quicktime" disabled>
+         accept="video/mp4,video/webm,video/quicktime">
 
   <label for="eventLink">LINK YA PICHA AU VIDEO</label>
-  <input id="eventLink" type="url"
-         placeholder="https://...">
+  <input id="eventLink" type="url" placeholder="https://...">
 
-  <p>Sehemu za kupandisha picha na video zinaandaliwa.</p>
+  <p>Picha hadi MB 5; video hadi MB 50.</p>
+
   <button type="submit" id="saveEventButton">
     HIFADHI KAMA DRAFT
   </button>
@@ -289,44 +290,76 @@
     });
 
   // NYG EVENTS - SAVE DRAFT
-  document.getElementById('eventForm')
-    .addEventListener('submit', async (e) => {
-      e.preventDefault();
+document.getElementById('eventForm')
+  .addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-      const button = document.getElementById('saveEventButton');
-      const status = document.getElementById('eventMessage');
+    const button = document.getElementById('saveEventButton');
+    const status = document.getElementById('eventMessage');
 
-      button.disabled = true;
-      status.textContent = 'Inahifadhi tukio...';
+    button.disabled = true;
+    status.textContent = 'Inahifadhi tukio...';
 
-      try {
-        const res = await fetch('/api/events/admin/create', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: document.getElementById('eventTitle').value.trim(),
-            description: document.getElementById('eventDescription').value.trim(),
-            event_date: document.getElementById('eventDate').value,
-media_url: document.getElementById('eventLink').value.trim()
-          })
-        });
+    try {
+      const payload = new FormData();
 
-        const data = await res.json();
+      payload.set(
+        'title',
+        document.getElementById('eventTitle').value.trim()
+      );
 
-        if (!res.ok || data.success !== true) {
-          throw new Error(data.error || 'Imeshindikana kuhifadhi tukio.');
-        }
+      payload.set(
+        'description',
+        document.getElementById('eventDescription').value.trim()
+      );
 
-        status.textContent = 'Tukio limehifadhiwa kama Draft. ID: ' + data.event_id;
-        e.target.reset();
+      payload.set(
+        'event_date',
+        document.getElementById('eventDate').value
+      );
 
-      } catch (error) {
-        status.textContent = error.message || 'Hitilafu imetokea.';
-      } finally {
-        button.disabled = false;
+      payload.set(
+        'media_url',
+        document.getElementById('eventLink').value.trim()
+      );
+
+      const image = document.getElementById('eventImage').files[0];
+      const video = document.getElementById('eventVideo').files[0];
+
+      if (image && image.size > 5 * 1024 * 1024) {
+        throw new Error('Picha isizidi MB 5.');
       }
-    });
+
+      if (video && video.size > 50 * 1024 * 1024) {
+        throw new Error('Video isizidi MB 50.');
+      }
+
+      if (image) payload.set('image', image);
+      if (video) payload.set('video', video);
+
+      const res = await fetch('/api/events/admin/create', {
+        method: 'POST',
+        credentials: 'same-origin',
+        body: payload
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.success !== true) {
+        throw new Error(data.error || 'Imeshindikana kuhifadhi tukio.');
+      }
+
+      status.textContent =
+        'Tukio limehifadhiwa kama Draft. ID: ' + data.event_id;
+
+      e.target.reset();
+
+    } catch (error) {
+      status.textContent = error.message || 'Hitilafu imetokea.';
+    } finally {
+      button.disabled = false;
+    }
+  });
 
   checkSession();
 </script>
