@@ -145,9 +145,9 @@
 
   <label for="eventLink">LINK YA PICHA AU VIDEO</label>
   <input id="eventLink" type="url"
-         placeholder="https://..." disabled>
+         placeholder="https://...">
 
-  <p>Sehemu za picha, video na link zinaandaliwa.</p>
+  <p>Sehemu za kupandisha picha na video zinaandaliwa.</p>
   <button type="submit" id="saveEventButton">
     HIFADHI KAMA DRAFT
   </button>
@@ -307,7 +307,8 @@
           body: JSON.stringify({
             title: document.getElementById('eventTitle').value.trim(),
             description: document.getElementById('eventDescription').value.trim(),
-            event_date: document.getElementById('eventDate').value
+            event_date: document.getElementById('eventDate').value,
+media_url: document.getElementById('eventLink').value.trim()
           })
         });
 
