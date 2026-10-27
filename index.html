@@ -1050,11 +1050,19 @@ thumb.style.cssText = 'width:150px;max-width:45%;height:auto;object-fit:contain;
   summary.appendChild(thumb);
 }
 
+const heading = document.createElement('div');
+
 const title = document.createElement('strong');
 title.textContent = event.title || 'TUKIO LA NYG';
-summary.appendChild(title);
-card.appendChild(summary);
+heading.appendChild(title);
 
+const hint = document.createElement('p');
+hint.textContent = 'BOFYA ⬇️ KUPATA HABARI KAMILI';
+hint.style.cssText = 'font-size:12px;margin:8px 0 0;';
+heading.appendChild(hint);
+
+summary.appendChild(heading);
+card.appendChild(summary);
 if (event.image_key) {
   const image = document.createElement('img');
   image.src = '/api/events/media/' + id + '/image';
