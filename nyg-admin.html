@@ -454,6 +454,153 @@ async function loadEvents() {
           // Link isiyo sahihi haionyeshwi.
         }
       }
+      // VITUFU VYA HARIRI NA FUTA
+const edit = document.createElement('button');
+edit.type = 'button';
+edit.textContent = 'HARIRI TUKIO';
+
+edit.addEventListener('click', () => {
+  const editor = document.createElement('form');
+  const fields = {};
+
+  for (const [key, label, type] of [
+    ['title', 'KICHWA', 'text'],
+    ['description', 'MAELEZO', 'textarea'],
+    ['event_date', 'TAREHE', 'date'],
+    ['media_url', 'LINK', 'url']
+  ]) {
+    const name = document.createElement('label');
+    name.textContent = label;
+
+    const input = document.createElement(
+      type === 'textarea' ? 'textarea' : 'input'
+    );
+
+    if (type !== 'textarea') input.type = type;
+    input.value = event[key] || '';
+
+    if (key === 'title' || key === 'description') {
+      input.required = true;
+    }
+
+    input.style.cssText = 'width:100%;padding:12px;';
+    fields[key] = input;
+    editor.append(name, input);
+  }
+
+  const imageInput = document.createElement('input');
+  imageInput.type = 'file';
+  imageInput.accept = 'image/jpeg,image/png,image/webp';
+
+  const videoInput = document.createElement('input');
+  videoInput.type = 'file';
+  videoInput.accept = 'video/mp4,video/webm,video/quicktime';
+
+  for (const [label, input] of [
+    ['BADILI PICHA (SI LAZIMA)', imageInput],
+    ['BADILI VIDEO (SI LAZIMA)', videoInput]
+  ]) {
+    const name = document.createElement('label');
+    name.textContent = label;
+    editor.append(name, input);
+  }
+
+  const save = document.createElement('button');
+  save.type = 'submit';
+  save.textContent = 'HIFADHI MABADILIKO';
+  editor.appendChild(save);
+
+  editor.addEventListener('submit', async e => {
+    e.preventDefault();
+    save.disabled = true;
+
+    try {
+      const body = new FormData();
+      body.set('event_id', String(id));
+
+      for (const key of [
+        'title', 'description', 'event_date', 'media_url'
+      ]) {
+        body.set(key, fields[key].value);
+      }
+
+      if (imageInput.files[0]) {
+        body.set('image', imageInput.files[0]);
+      }
+
+      if (videoInput.files[0]) {
+        body.set('video', videoInput.files[0]);
+      }
+
+      const response = await fetch('/api/events/admin/update', {
+        method: 'POST',
+        credentials: 'same-origin',
+        body
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Imeshindikana kuhifadhi.');
+      }
+
+      await loadEvents();
+
+      if (result.cleanup_pending) {
+        message.textContent =
+          'Mabadiliko yamehifadhiwa; baadhi ya faili za zamani zinahitaji kufutwa kwenye hifadhi.';
+      }
+
+    } catch (error) {
+      message.textContent = error.message;
+      save.disabled = false;
+    }
+  });
+
+  edit.replaceWith(editor);
+});
+
+card.appendChild(edit);
+
+const remove = document.createElement('button');
+remove.type = 'button';
+remove.textContent = 'FUTA TUKIO';
+
+remove.addEventListener('click', async () => {
+  if (!confirm('Futa tukio hili pamoja na picha na video zake?')) {
+    return;
+  }
+
+  remove.disabled = true;
+
+  try {
+    const response = await fetch('/api/events/admin/delete', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_id: id })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Kufuta kumeshindikana.');
+    }
+
+    await loadEvents();
+
+    if (result.cleanup_pending) {
+      message.textContent = result.message ||
+        'Baadhi ya faili zinahitaji kufutwa kwenye hifadhi.';
+    }
+
+  } catch (error) {
+    message.textContent = error.message;
+    remove.disabled = false;
+  }
+});
+
+card.appendChild(remove);
 
       if (event.status === 'draft') {
         const publish = document.createElement('button');
