@@ -135,7 +135,19 @@
 
   <label for="eventDate">TAREHE YA TUKIO</label>
   <input id="eventDate" type="date">
+  <label for="eventImage">PANDISHA PICHA</label>
+  <input id="eventImage" type="file"
+         accept="image/jpeg,image/png,image/webp" disabled>
 
+  <label for="eventVideo">PANDISHA VIDEO</label>
+  <input id="eventVideo" type="file"
+         accept="video/mp4,video/webm,video/quicktime" disabled>
+
+  <label for="eventLink">LINK YA PICHA AU VIDEO</label>
+  <input id="eventLink" type="url"
+         placeholder="https://..." disabled>
+
+  <p>Sehemu za picha, video na link zinaandaliwa.</p>
   <button type="submit" id="saveEventButton">
     HIFADHI KAMA DRAFT
   </button>
