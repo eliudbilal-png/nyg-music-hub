@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>NYG Friends | Dashboard</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px 16px;
+      display: grid;
+      place-items: center;
+      background: #f1f5fb;
+      color: #182235;
+      font-family: Arial, sans-serif;
+    }
+
+    main {
+      width: 100%;
+      max-width: 520px;
+      padding: 28px 22px;
+      background: #fff;
+      border: 1px solid #dce3ed;
+      border-radius: 18px;
+      box-shadow: 0 8px 28px #14213d12;
+    }
+
+    .brand { color: #1769d2; font-weight: 700; }
+    h1 { margin-bottom: 8px; }
+    p { color: #586579; line-height: 1.6; }
+    .detail { padding: 14px 0; border-bottom: 1px solid #e5eaf1; }
+    .label { display: block; margin-bottom: 5px; color: #687386; }
+    #status { text-align: center; }
+
+    a {
+      display: block;
+      margin-top: 24px;
+      padding: 14px;
+      border-radius: 10px;
+      background: #1769d2;
+      color: #fff;
+      text-align: center;
+      text-decoration: none;
+      font-weight: 700;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <div class="brand">NYG FRIENDS</div>
+    <h1>Dashboard ya mwanachama</h1>
+    <p id="status">Inakagua akaunti yako…</p>
+
+    <section id="details" hidden>
+      <div class="detail">
+        <span class="label">Jina kamili</span>
+        <strong id="memberName"></strong>
+      </div>
+      <div class="detail">
+        <span class="label">Barua pepe</span>
+        <strong id="memberEmail"></strong>
+      </div>
+      <div class="detail">
+        <span class="label">Namba ya mwanachama</span>
+        <strong id="memberCode"></strong>
+      </div>
+      <a href="/nyg-market-place.html">Endelea kwenye NYG Friends</a>
+    </section>
+  </main>
+
+  <script>
+    async function loadMember() {
+      const status = document.getElementById('status');
+
+      try {
+        const response = await fetch('/api/members/me', {
+          method: 'GET',
+          credentials: 'same-origin'
+        });
+
+        if (!response.ok) {
+          window.location.href = '/nyg-signin.html';
+          return;
+        }
+
+        const result = await response.json();
+
+        document.getElementById('memberName').textContent =
+          result.member?.full_name || '';
+
+        document.getElementById('memberEmail').textContent =
+          result.member?.email || '';
+
+        document.getElementById('memberCode').textContent =
+          result.member?.member_code || '';
+
+        status.hidden = true;
+        document.getElementById('details').hidden = false;
+      } catch {
+        status.textContent =
+          'Imeshindikana kuwasiliana na mfumo. Jaribu tena.';
+      }
+    }
+
+    loadMember();
+  </script>
+</body>
+</html>
