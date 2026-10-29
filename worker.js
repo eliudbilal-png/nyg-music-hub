@@ -28,7 +28,22 @@ const reply = (data, status = 200, headers = {}) => new Response(JSON.stringify(
   status,
   headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers }
 });
+async function handleMemberAuth(request, env, url, path, method) {
+  const signup = path === '/api/members/signup' && method === 'POST';
+  const verify = path === '/api/members/verify' && method === 'GET';
 
+  if (!signup && !verify) return null;
+
+  if (!env.MEMBERS_DB) {
+    return reply({ error: 'Database ya wanachama haijaunganishwa.' }, 503);
+  }
+
+  if (signup) {
+    if (!sameOrigin(request, url)) {
+      return reply({ error: 'Ombi halijaruhusiwa.' }, 403);
+    }
+
+    if (!env.EMAIL)
 const allowedVideos = new Set([
   'EwOFoJZerDs', '-lkZ63H_pqs', 'aAxYDrwIdsw', '80v3e5pqBiE', '_pbNPbDjArw'
 ]);
@@ -64,6 +79,9 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
+        const memberAuthResponse =
+      await handleMemberAuth(request, env, url, path, method);
+    if (memberAuthResponse) return memberAuthResponse;
 // NYG EVENTS - EDIT NA DELETE
 if (
   ['/api/events/admin/update', '/api/events/admin/delete'].includes(path) &&
