@@ -21,6 +21,12 @@
       "bucket_name": "nyg-events-media"
     }
   ],
+"send_email": [
+  {
+    "name": "EMAIL",
+    "remote": true
+  }
+],
   "d1_databases": [
     {
       "binding": "DB",
