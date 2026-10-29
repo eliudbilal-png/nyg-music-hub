@@ -481,19 +481,15 @@ export default {
               SUM(CASE WHEN a.is_correct = 1 THEN 1 ELSE 0 END) AS correct_count,
               SUM(COALESCE(a.points_awarded, 0)) AS points
             FROM quiz_competitions c
-            JOIN quiz_days d ON d.competition_id = c.id
-            JOIN quiz_questions q ON q.day_id = d.id
-            JOIN quiz_answers a ON a.question_id = q.id
-            WHERE c.ends_at <= ?
+            LEFT JOIN quiz_days d ON d.competition_id = c.id
+LEFT JOIN quiz_questions q ON q.day_id = d.id
+LEFT JOIN quiz_answers a ON a.question_id = q.id
+WHERE c.starts_at <= ?
             GROUP BY c.id, a.member_id
           )
-          SELECT *,
-            RANK() OVER (
-              PARTITION BY competition_id
-              ORDER BY points DESC, correct_count DESC
-            ) AS rank
-          FROM scores
-          ORDER BY ends_at DESC, rank ASC
+          SELECT *
+FROM scores
+ORDER BY ends_at DESC, points DESC, correct_count DESC
         `).bind(new Date().toISOString()).all();
 
         const groups = new Map();
@@ -507,7 +503,7 @@ export default {
               players: []
             });
           }
-
+if (row.member_id) {
           groups.get(row.competition_id).players.push({
             member_id: row.member_id,
             answered_count: Number(row.answered_count || 0),
@@ -515,16 +511,15 @@ export default {
             points: Number(row.points || 0),
             rank: Number(row.rank || 0)
           });
+  }
         }
 
         const neededIds = new Set();
 
         for (const competition of groups.values()) {
-          competition.players
-            .filter(player =>
-              player.rank <= 10 || player.member_id === member.id
-            )
-            .forEach(player => neededIds.add(player.member_id));
+          competition.players.forEach(player =>
+  neededIds.add(player.member_id)
+);
         }
 
         const memberInfo = new Map();
@@ -544,32 +539,39 @@ export default {
         }
 
         const competitions = [...groups.values()].map(item => {
-          const own = item.players.find(
-            player => player.member_id === member.id
-          );
+  const rankedPlayers = item.players
+    .map(player => ({
+      ...player,
+      full_name: memberInfo.get(player.member_id)?.full_name || 'Mwanachama',
+      member_code: memberInfo.get(player.member_id)?.member_code || ''
+    }))
+    .sort((a, b) =>
+      b.points - a.points ||
+      a.full_name.localeCompare(b.full_name, 'sw', { sensitivity: 'base' })
+    )
+    .map((player, index) => ({
+      ...player,
+      rank: index + 1
+    }));
 
-          const leaderboard = item.players
-            .filter(player => player.rank <= 10)
-            .map(player => ({
-              ...player,
-              full_name: memberInfo.get(player.member_id)?.full_name || 'Mwanachama',
-              member_code: memberInfo.get(player.member_id)?.member_code || ''
-            }));
+  const own = rankedPlayers.find(
+    player => player.member_id === member.id
+  );
 
-          return {
-            id: item.id,
-            title: item.title,
-            ends_at: item.ends_at,
-            participants_count: item.players.length,
-            leaderboard,
-            my_result: own ? {
-              rank: own.rank,
-              points: own.points,
-              correct_count: own.correct_count,
-              answered_count: own.answered_count
-            } : null
-          };
-        });
+  return {
+    id: item.id,
+    title: item.title,
+    ends_at: item.ends_at,
+    participants_count: rankedPlayers.length,
+    leaderboard: rankedPlayers.slice(0, 10),
+    my_result: own ? {
+      rank: own.rank,
+      points: own.points,
+      correct_count: own.correct_count,
+      answered_count: own.answered_count
+    } : null
+  };
+});
 
         return reply({ competitions });
       } catch (error) {
