@@ -107,6 +107,67 @@
   </main>
 
   <script>
+async function loadQuizResults() {
+  const status = document.getElementById('quizResultsStatus');
+  const list = document.getElementById('quizResultsList');
+
+  try {
+    const response = await fetch('/api/quiz/results', {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store'
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Imeshindikana kupata matokeo.');
+    }
+
+    const competitions = Array.isArray(data.competitions)
+      ? data.competitions
+      : [];
+
+    if (competitions.length === 0) {
+      status.textContent = 'Bado hakuna matokeo rasmi. Alama: 0.';
+      return;
+    }
+
+    status.textContent = '';
+    list.replaceChildren();
+
+    for (const competition of competitions) {
+      const card = document.createElement('article');
+      card.className = 'quiz-card';
+
+      const title = document.createElement('h3');
+      title.textContent = competition.title || 'Quiz';
+      card.appendChild(title);
+
+      const own = competition.my_result;
+      const score = document.createElement('p');
+      score.textContent = own
+        ? `Nafasi yako: ${own.rank} | Pointi: ${own.points}`
+        : 'Hujashiriki kwenye mashindano haya.';
+      card.appendChild(score);
+
+      const ranking = document.createElement('ol');
+      ranking.className = 'ranking';
+
+      for (const player of competition.leaderboard || []) {
+        const item = document.createElement('li');
+        item.textContent =
+          `${player.full_name || 'Mwanachama'} — ${player.points || 0} pointi`;
+        ranking.appendChild(item);
+      }
+
+      card.appendChild(ranking);
+      list.appendChild(card);
+    }
+  } catch (error) {
+    status.textContent =
+      error.message || 'Imeshindikana kupakia matokeo. Jaribu tena.';
+  }
+}    
     async function loadMember() {
       const status = document.getElementById('status');
 
