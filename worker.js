@@ -1799,6 +1799,8 @@ if (path.startsWith('/api/testimonies/audio/') &&
         return reply({ error: 'Quiz database haijaunganishwa.' }, 503);
       }
 
+      let createdDayId = null;
+
       try {
         const data = await request.json();
         const competitionId = String(data.competition_id || '');
@@ -1820,10 +1822,31 @@ if (path.startsWith('/api/testimonies/audio/') &&
         if (!competition ||
             openMs < Date.parse(competition.starts_at) ||
             closeMs > Date.parse(competition.ends_at)) {
-          return reply({ error: 'Siku lazima iwe ndani ya muda wa mashindano.' }, 400);
+          return reply({
+            error: 'Siku lazima iwe ndani ya muda wa mashindano.'
+          }, 400);
         }
 
-        const saved = await env.QUIZ_DB.prepare(`
+        const available = await env.QUIZ_DB.prepare(`
+          SELECT COUNT(*) AS total
+          FROM quiz_question_bank b
+          WHERE b.is_active = 1
+            AND NOT EXISTS (
+              SELECT 1
+              FROM quiz_questions used_q
+              JOIN quiz_days used_day ON used_day.id = used_q.day_id
+              WHERE used_day.competition_id = ?
+                AND used_q.bank_question_id = b.id
+            )
+        `).bind(competitionId).first();
+
+        if (!available || Number(available.total) < 10) {
+          return reply({
+            error: 'Benki haina maswali 10 ambayo hayajatumika kwenye mashindano haya. Ongeza maswali zaidi kwanza.'
+          }, 400);
+        }
+
+        const savedDay = await env.QUIZ_DB.prepare(`
           INSERT INTO quiz_days
             (competition_id, day_number, opens_at, closes_at, status)
           VALUES (?, ?, ?, ?, 'scheduled')
@@ -1834,18 +1857,69 @@ if (path.startsWith('/api/testimonies/audio/') &&
           new Date(closeMs).toISOString()
         ).run();
 
+        createdDayId = savedDay.meta.last_row_id;
+
+        const assigned = await env.QUIZ_DB.prepare(`
+          INSERT INTO quiz_questions
+            (day_id, position, question_type, prompt,
+             option_a, option_b, option_c, option_d,
+             correct_answer, points, bank_question_id)
+          SELECT
+            ?,
+            ROW_NUMBER() OVER (ORDER BY picked.random_order),
+            picked.question_type,
+            picked.prompt,
+            picked.option_a,
+            picked.option_b,
+            picked.option_c,
+            picked.option_d,
+            picked.correct_answer,
+            2,
+            picked.id
+          FROM (
+            SELECT b.*, random() AS random_order
+            FROM quiz_question_bank b
+            WHERE b.is_active = 1
+              AND NOT EXISTS (
+                SELECT 1
+                FROM quiz_questions used_q
+                JOIN quiz_days used_day ON used_day.id = used_q.day_id
+                WHERE used_day.competition_id = ?
+                  AND used_q.bank_question_id = b.id
+              )
+            ORDER BY random_order
+            LIMIT 10
+          ) AS picked
+        `).bind(createdDayId, competitionId).run();
+
+        if (Number(assigned.meta?.changes) !== 10) {
+          await env.QUIZ_DB.prepare(
+            'DELETE FROM quiz_days WHERE id = ?'
+          ).bind(createdDayId).run();
+
+          return reply({
+            error: 'Maswali 10 hayakuweza kugawiwa. Hakikisha benki ina maswali ya kutosha kisha jaribu tena.'
+          }, 409);
+        }
+
         return reply({
-          id: saved.meta.last_row_id,
-          message: 'Siku ya quiz imehifadhiwa.'
+          id: createdDayId,
+          questions_assigned: 10,
+          message: 'Siku imehifadhiwa na maswali 10 yamepangwa moja kwa moja.'
         }, 201);
       } catch (error) {
+        if (createdDayId !== null) {
+          await env.QUIZ_DB.prepare(
+            'DELETE FROM quiz_days WHERE id = ?'
+          ).bind(createdDayId).run().catch(() => {});
+        }
+
         console.error('NYG quiz day create error:', error);
         return reply({
-          error: 'Imeshindikana kuhifadhi siku. Hakikisha siku hiyo haijaongezwa tayari.'
+          error: 'Imeshindikana kuhifadhi siku na kupanga maswali.'
         }, 500);
       }
     }
-
     if (path === '/api/quiz/admin/question' && method === 'POST') {
       if (!env.QUIZ_DB) {
         return reply({ error: 'Quiz database haijaunganishwa.' }, 503);
