@@ -1670,6 +1670,77 @@ if (path.startsWith('/api/testimonies/audio/') &&
       }
 
       // NYG QUIZ - ADMIN SETUP
+          if (path === '/api/quiz/admin/question-bank' && method === 'POST') {
+      if (!env.QUIZ_DB) {
+        return reply({ error: 'Quiz database haijaunganishwa.' }, 503);
+      }
+
+      try {
+        const data = await request.json();
+        const questions = data.questions;
+
+        if (!Array.isArray(questions) || questions.length < 1 || questions.length > 100) {
+          return reply({
+            error: 'Tuma maswali kati ya 1 na 100 kwa kila kundi.'
+          }, 400);
+        }
+
+        const statements = [];
+
+        for (const item of questions) {
+          const questionType = String(item.question_type || '').trim();
+          const prompt = String(item.prompt || '').trim();
+          const optionA = String(item.option_a || '').trim();
+          const optionB = String(item.option_b || '').trim();
+          const optionC = String(item.option_c || '').trim();
+          const optionD = String(item.option_d || '').trim();
+          const rawAnswer = String(item.correct_answer || '').trim();
+
+          if (
+            !['choice', 'short'].includes(questionType) ||
+            prompt.length < 3 || prompt.length > 1000 ||
+            !rawAnswer || rawAnswer.length > 500
+          ) {
+            return reply({ error: 'Kagua aina, swali na jibu sahihi.' }, 400);
+          }
+
+          if (
+            questionType === 'choice' &&
+            (!optionA || !optionB || !optionC || !optionD ||
+             !['A', 'B', 'C', 'D'].includes(rawAnswer.toUpperCase()))
+          ) {
+            return reply({
+              error: 'Swali la kuchagua linahitaji chaguo A-D na jibu sahihi A, B, C au D.'
+            }, 400);
+          }
+
+          statements.push(env.QUIZ_DB.prepare(`
+            INSERT INTO quiz_question_bank
+              (question_type, prompt, option_a, option_b, option_c, option_d,
+               correct_answer, points, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 2, 1)
+          `).bind(
+            questionType,
+            prompt,
+            questionType === 'choice' ? optionA : null,
+            questionType === 'choice' ? optionB : null,
+            questionType === 'choice' ? optionC : null,
+            questionType === 'choice' ? optionD : null,
+            questionType === 'choice' ? rawAnswer.toUpperCase() : rawAnswer
+          ));
+        }
+
+        await env.QUIZ_DB.batch(statements);
+
+        return reply({
+          saved: questions.length,
+          message: 'Maswali yameongezwa kwenye benki.'
+        }, 201);
+      } catch (error) {
+        console.error('NYG quiz question bank error:', error);
+        return reply({ error: 'Imeshindikana kuhifadhi maswali ya benki.' }, 500);
+      }
+    }
     if (path === '/api/quiz/admin/competitions' && method === 'GET') {
       if (!env.QUIZ_DB) {
         return reply({ error: 'Quiz database haijaunganishwa.' }, 503);
