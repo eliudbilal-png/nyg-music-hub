@@ -357,7 +357,22 @@ if (!signup && !signin && !me && !verify) return null;
     ]);
 
     return reply({
-      message: 'Barua pepe imethibitishwa. Akaunti yako iko tayari.'
+      const expires = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
+const payload = base64url(
+  enc.encode(JSON.stringify({ sub: record.member_id, exp: expires }))
+);
+const signature = await sign(payload, env.MEMBER_SESSION_SECRET);
+
+return new Response(null, {
+  status: 302,
+  headers: {
+    'location': new URL('/nyg-dashboard.html', url.origin).toString(),
+    'cache-control': 'no-store',
+    'set-cookie':
+      'nyg_member=' + payload + '.' + signature +
+      '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800'
+  }
+});
     });
   } catch {
     return reply({
