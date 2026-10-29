@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NYG Quiz Admin</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #f3f6fb;
+      color: #182230;
+      font-family: Arial, sans-serif;
+    }
+    main {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    h1 { color: #123b70; }
+    section {
+      background: white;
+      border: 1px solid #d8e0ea;
+      border-radius: 12px;
+      padding: 18px;
+      margin: 18px 0;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+      margin: 14px 0 6px;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #b8c4d2;
+      border-radius: 8px;
+      font: inherit;
+    }
+    textarea { min-height: 80px; }
+    button {
+      margin-top: 14px;
+      border: 0;
+      background: #1769e0;
+      color: white;
+      font-weight: bold;
+    }
+    .options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .note { color: #586779; line-height: 1.5; }
+    #message { white-space: pre-wrap; font-weight: bold; }
+    #pending { padding-left: 22px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Usimamizi wa Quiz ya NYG</h1>
+  <p class="note">
+    Ingia kwanza kwenye mfumo wa admin. Maswali utakayoongeza yatawekwa
+    kwenye benki; siku ya quiz ikipangwa, Worker itachagua maswali 10
+    ambayo hayajatumika kwenye mashindano hayo.
+  </p>
+
+  <section>
+    <h2>1. Ongeza maswali kwenye benki</h2>
+
+    <label for="type">Aina ya swali</label>
+    <select id="type">
+      <option value="choice">Multiple choice</option>
+      <option value="short">Jibu fupi</option>
+    </select>
+
+    <label for="prompt">Swali</label>
+    <textarea id="prompt" placeholder="Andika swali hapa"></textarea>
+
+    <div id="choiceFields">
+      <label>Chaguo</label>
+      <div class="options">
+        <input id="option_a" placeholder="A">
+        <input id="option_b" placeholder="B">
+        <input id="option_c" placeholder="C">
+        <input id="option_d" placeholder="D">
+      </div>
+      <label for="correctChoice">Jibu sahihi</label>
+      <select id="correctChoice">
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+        <option value="D">D</option>
+      </select>
+    </div>
+
+    <div id="shortFields" hidden>
+      <label for="shortAnswer">Jibu sahihi</label>
+      <input id="shortAnswer" placeholder="Andika jibu sahihi">
+    </div>
+
+    <button type="button" id="addQuestion">Weka swali kwenye orodha</button>
+    <p id="count" class="note">Maswali tayari: 0</p>
+    <ol id="pending"></ol>
+    <button type="button" id="saveQuestions">Hifadhi maswali kwenye benki</button>
+  </section>
+
+  <section>
+    <h2>2. Panga siku ya quiz</h2>
+    <p class="note">
+      Weka Competition ID ya mashindano yaliyopo. Worker itachagua maswali
+      10 kutoka benki ya maswali.
+    </p>
+
+    <label for="competitionId">Competition ID</label>
+    <input id="competitionId" placeholder="Bandika ID ya mashindano">
+
+    <label for="dayNumber">Namba ya siku</label>
+    <input id="dayNumber" type="number" min="1" max="31" placeholder="Mfano: 1">
+
+    <label for="opensAt">Quiz ifunguke</label>
+    <input id="opensAt" type="datetime-local">
+
+    <label for="closesAt">Quiz ifungwe</label>
+    <input id="closesAt" type="datetime-local">
+
+    <button type="button" id="createDay">Panga siku na chagua maswali 10</button>
+  </section>
+
+  <section>
+    <div id="message" role="status"></div>
+  </section>
+</main>
+
+<script>
+  const pending = [];
+
+  const typeInput = document.getElementById('type');
+  const choiceFields = document.getElementById('choiceFields');
+  const shortFields = document.getElementById('shortFields');
+  const message = document.getElementById('message');
+
+  typeInput.addEventListener('change', () => {
+    const isChoice = typeInput.value === 'choice';
+    choiceFields.hidden = !isChoice;
+    shortFields.hidden = isChoice;
+  });
+
+  function showMessage(text, isError = false) {
+    message.textContent = text;
+    message.style.color = isError ? '#b42318' : '#16733c';
+  }
+
+  async function postJson(path, payload) {
+    const response = await fetch(path, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(result.error || `Ombi limekataa (${response.status}).`);
+    }
+    return result;
+  }
+
+  document.getElementById('addQuestion').addEventListener('click', () => {
+    const questionType = typeInput.value;
+    const prompt = document.getElementById('prompt').value.trim();
+
+    if (!prompt) {
+      showMessage('Andika swali kwanza.', true);
+      return;
+    }
+
+    const question = {
+      question_type: questionType,
+      prompt,
+      points: 2
+    };
+
+    if (questionType === 'choice') {
+      question.option_a = document.getElementById('option_a').value.trim();
+      question.option_b = document.getElementById('option_b').value.trim();
+      question.option_c = document.getElementById('option_c').value.trim();
+      question.option_d = document.getElementById('option_d').value.trim();
+      question.correct_answer = document.getElementById('correctChoice').value;
+
+      if (!question.option_a || !question.option_b ||
+          !question.option_c || !question.option_d) {
+        showMessage('Jaza chaguo zote nne A, B, C na D.', true);
+        return;
+      }
+    } else {
+      question.correct_answer =
+        document.getElementById('shortAnswer').value.trim();
+
+      if (!question.correct_answer) {
+        showMessage('Andika jibu sahihi.', true);
+        return;
+      }
+    }
+
+    if (pending.length >= 100) {
+      showMessage('Unaweza kuhifadhi hadi maswali 100 kwa mara moja.', true);
+      return;
+    }
+
+    pending.push(question);
+    const item = document.createElement('li');
+    item.textContent = question.prompt;
+    document.getElementById('pending').appendChild(item);
+    document.getElementById('count').textContent =
+      `Maswali tayari: ${pending.length}`;
+
+    document.getElementById('prompt').value = '';
+    document.getElementById('option_a').value = '';
+    document.getElementById('option_b').value = '';
+    document.getElementById('option_c').value = '';
+    document.getElementById('option_d').value = '';
+    document.getElementById('shortAnswer').value = '';
+    showMessage('Swali limeongezwa kwenye orodha.');
+  });
+
+  document.getElementById('saveQuestions').addEventListener('click', async () => {
+    if (!pending.length) {
+      showMessage('Ongeza angalau swali moja kwanza.', true);
+      return;
+    }
+
+    try {
+      const result = await postJson(
+        '/api/quiz/admin/question-bank',
+        { questions: pending }
+      );
+      showMessage(result.message || 'Maswali yamehifadhiwa kwenye benki.');
+      pending.length = 0;
+      document.getElementById('pending').replaceChildren();
+      document.getElementById('count').textContent = 'Maswali tayari: 0';
+    } catch (error) {
+      showMessage(error.message, true);
+    }
+  });
+
+  document.getElementById('createDay').addEventListener('click', async () => {
+    const competitionId =
+      document.getElementById('competitionId').value.trim();
+    const dayNumber =
+      Number(document.getElementById('dayNumber').value);
+    const opensAt =
+      document.getElementById('opensAt').value;
+    const closesAt =
+      document.getElementById('closesAt').value;
+
+    if (!competitionId || !dayNumber || !opensAt || !closesAt) {
+      showMessage('Jaza Competition ID, namba ya siku na muda wote.', true);
+      return;
+    }
+
+    try {
+      const result = await postJson('/api/quiz/admin/day', {
+        competition_id: competitionId,
+        day_number: dayNumber,
+        opens_at: new Date(opensAt).toISOString(),
+        closes_at: new Date(closesAt).toISOString()
+      });
+      showMessage(
+        result.message ||
+        'Siku imepangwa. Worker imechagua maswali kutoka kwenye benki.'
+      );
+    } catch (error) {
+      showMessage(error.message, true);
+    }
+  });
+</script>
+</body>
+</html>
