@@ -356,7 +356,6 @@ if (!signup && !signin && !me && !verify) return null;
       ).bind(now, tokenHash)
     ]);
 
-    return reply({
       const expires = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
 const payload = base64url(
   enc.encode(JSON.stringify({ sub: record.member_id, exp: expires }))
