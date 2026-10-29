@@ -459,6 +459,124 @@ export default {
       await handleMemberAuth(request, env, url, path, method);
     if (memberAuthResponse) return memberAuthResponse;
        // NYG QUIZ - MEMBER QUESTIONS AND ANSWERS
+        if (path === '/api/quiz/results' && method === 'GET') {
+      if (!env.QUIZ_DB || !env.MEMBERS_DB) {
+        return reply({ error: 'Database ya quiz haijaunganishwa.' }, 503);
+      }
+
+      const member = await getSignedInQuizMember(request, env);
+      if (!member) {
+        return reply({ error: 'Ingia kwenye akaunti yako kwanza.' }, 401);
+      }
+
+      try {
+        const result = await env.QUIZ_DB.prepare(`
+          WITH scores AS (
+            SELECT
+              c.id AS competition_id,
+              c.title,
+              c.ends_at,
+              a.member_id,
+              COUNT(a.question_id) AS answered_count,
+              SUM(CASE WHEN a.is_correct = 1 THEN 1 ELSE 0 END) AS correct_count,
+              SUM(COALESCE(a.points_awarded, 0)) AS points
+            FROM quiz_competitions c
+            JOIN quiz_days d ON d.competition_id = c.id
+            JOIN quiz_questions q ON q.day_id = d.id
+            JOIN quiz_answers a ON a.question_id = q.id
+            WHERE c.ends_at <= ?
+            GROUP BY c.id, a.member_id
+          )
+          SELECT *,
+            RANK() OVER (
+              PARTITION BY competition_id
+              ORDER BY points DESC, correct_count DESC
+            ) AS rank
+          FROM scores
+          ORDER BY ends_at DESC, rank ASC
+        `).bind(new Date().toISOString()).all();
+
+        const groups = new Map();
+
+        for (const row of result.results || []) {
+          if (!groups.has(row.competition_id)) {
+            groups.set(row.competition_id, {
+              id: row.competition_id,
+              title: row.title,
+              ends_at: row.ends_at,
+              players: []
+            });
+          }
+
+          groups.get(row.competition_id).players.push({
+            member_id: row.member_id,
+            answered_count: Number(row.answered_count || 0),
+            correct_count: Number(row.correct_count || 0),
+            points: Number(row.points || 0),
+            rank: Number(row.rank || 0)
+          });
+        }
+
+        const neededIds = new Set();
+
+        for (const competition of groups.values()) {
+          competition.players
+            .filter(player =>
+              player.rank <= 10 || player.member_id === member.id
+            )
+            .forEach(player => neededIds.add(player.member_id));
+        }
+
+        const memberInfo = new Map();
+        const ids = [...neededIds];
+
+        for (let i = 0; i < ids.length; i += 80) {
+          const batch = ids.slice(i, i + 80);
+          const marks = batch.map(() => '?').join(',');
+          const found = await env.MEMBERS_DB.prepare(
+            `SELECT id, full_name, member_code
+             FROM members WHERE id IN (${marks})`
+          ).bind(...batch).all();
+
+          for (const person of found.results || []) {
+            memberInfo.set(person.id, person);
+          }
+        }
+
+        const competitions = [...groups.values()].map(item => {
+          const own = item.players.find(
+            player => player.member_id === member.id
+          );
+
+          const leaderboard = item.players
+            .filter(player => player.rank <= 10)
+            .map(player => ({
+              ...player,
+              full_name: memberInfo.get(player.member_id)?.full_name || 'Mwanachama',
+              member_code: memberInfo.get(player.member_id)?.member_code || ''
+            }));
+
+          return {
+            id: item.id,
+            title: item.title,
+            ends_at: item.ends_at,
+            participants_count: item.players.length,
+            leaderboard,
+            my_result: own ? {
+              rank: own.rank,
+              points: own.points,
+              correct_count: own.correct_count,
+              answered_count: own.answered_count
+            } : null
+          };
+        });
+
+        return reply({ competitions });
+      } catch (error) {
+        console.error('NYG quiz results error:', error);
+        return reply({ error: 'Imeshindikana kupata matokeo.' }, 500);
+      }
+    }
     if (path === '/api/quiz/today' || path === '/api/quiz/answer') {
       if (!env.QUIZ_DB) {
         return reply({ error: 'Quiz database haijaunganishwa.' }, 503);
