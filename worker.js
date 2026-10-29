@@ -445,6 +445,130 @@ export default {
         const memberAuthResponse =
       await handleMemberAuth(request, env, url, path, method);
     if (memberAuthResponse) return memberAuthResponse;
+       // NYG QUIZ - MEMBER QUESTIONS AND ANSWERS
+    if (path === '/api/quiz/today' || path === '/api/quiz/answer') {
+      if (!env.QUIZ_DB) {
+        return reply({ error: 'Quiz database haijaunganishwa.' }, 503);
+      }
+
+      const member = await getSignedInQuizMember(request, env);
+      if (!member) {
+        return reply({ error: 'Ingia kwenye akaunti yako ya mwanachama kwanza.' }, 401);
+      }
+
+      const now = new Date().toISOString();
+
+      if (path === '/api/quiz/today' && method === 'GET') {
+        try {
+          const day = await env.QUIZ_DB.prepare(`
+            SELECT d.id AS day_id, d.day_number,
+                   c.id AS competition_id, c.title
+            FROM quiz_days d
+            JOIN quiz_competitions c ON c.id = d.competition_id
+            WHERE c.status IN ('scheduled', 'active')
+              AND d.status IN ('scheduled', 'open')
+              AND c.starts_at <= ? AND c.ends_at > ?
+              AND d.opens_at <= ? AND d.closes_at > ?
+            ORDER BY d.day_number
+            LIMIT 1
+          `).bind(now, now, now, now).first();
+
+          if (!day) {
+            return reply({ state: 'closed', questions: [] });
+          }
+
+          const result = await env.QUIZ_DB.prepare(`
+            SELECT q.id, q.position, q.question_type, q.prompt,
+                   q.option_a, q.option_b, q.option_c, q.option_d,
+                   CASE WHEN a.id IS NULL THEN 0 ELSE 1 END AS answered
+            FROM quiz_questions q
+            LEFT JOIN quiz_answers a
+              ON a.question_id = q.id AND a.member_id = ?
+            WHERE q.day_id = ?
+            ORDER BY q.position
+          `).bind(member.id, day.day_id).all();
+
+          return reply({
+            state: 'open',
+            competition_id: day.competition_id,
+            title: day.title,
+            day_number: day.day_number,
+            questions: result.results || []
+          });
+        } catch (error) {
+          console.error('NYG quiz load error:', error);
+          return reply({ error: 'Imeshindikana kupata maswali.' }, 500);
+        }
+      }
+
+      if (path === '/api/quiz/answer' && method === 'POST') {
+        if (!sameOrigin(request, url)) {
+          return reply({ error: 'Ombi halijaruhusiwa.' }, 403);
+        }
+
+        const data = await request.json().catch(() => null);
+        const questionId = Number(data?.question_id);
+        const answerText = String(data?.answer || '').trim();
+
+        if (!Number.isSafeInteger(questionId) || questionId < 1 ||
+            !answerText || answerText.length > 500) {
+          return reply({ error: 'Jibu au swali halijakubalika.' }, 400);
+        }
+
+        try {
+          const question = await env.QUIZ_DB.prepare(`
+            SELECT q.question_type, q.correct_answer, q.points
+            FROM quiz_questions q
+            JOIN quiz_days d ON d.id = q.day_id
+            JOIN quiz_competitions c ON c.id = d.competition_id
+            WHERE q.id = ?
+              AND c.status IN ('scheduled', 'active')
+              AND d.status IN ('scheduled', 'open')
+              AND c.starts_at <= ? AND c.ends_at > ?
+              AND d.opens_at <= ? AND d.closes_at > ?
+          `).bind(questionId, now, now, now, now).first();
+
+          if (!question) {
+            return reply({ error: 'Swali hili halipo wazi kwa sasa.' }, 409);
+          }
+
+          const normalize = value =>
+            String(value).trim().toLowerCase().replace(/\s+/g, ' ');
+
+          const submitted = question.question_type === 'choice'
+            ? answerText.toUpperCase()
+            : normalize(answerText);
+          const correct = question.question_type === 'choice'
+            ? String(question.correct_answer).trim().toUpperCase()
+            : normalize(question.correct_answer);
+          const isCorrect = submitted === correct ? 1 : 0;
+
+          const saved = await env.QUIZ_DB.prepare(`
+            INSERT INTO quiz_answers
+              (question_id, member_id, answer_text, is_correct, points_awarded)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(question_id, member_id) DO NOTHING
+          `).bind(
+            questionId,
+            member.id,
+            answerText,
+            isCorrect,
+            isCorrect ? question.points : 0
+          ).run();
+
+          if (!saved.meta?.changes) {
+            return reply({ error: 'Jibu la swali hili tayari limetumwa.' }, 409);
+          }
+
+          return reply({ saved: true, message: 'Jibu lako limehifadhiwa.' }, 201);
+        } catch (error) {
+          console.error('NYG quiz answer error:', error);
+          return reply({ error: 'Imeshindikana kuhifadhi jibu.' }, 500);
+        }
+      }
+
+      return reply({ error: 'Njia ya quiz haijapatikana.' }, 404);
+    } 
 // NYG EVENTS - EDIT NA DELETE
 if (
   ['/api/events/admin/update', '/api/events/admin/delete'].includes(path) &&
