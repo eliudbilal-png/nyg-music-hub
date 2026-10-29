@@ -1669,7 +1669,182 @@ if (path.startsWith('/api/testimonies/audio/') &&
         return reply({ error: 'Forbidden origin' }, 403);
       }
 
-      
+      // NYG QUIZ - ADMIN SETUP
+    if (path === '/api/quiz/admin/competitions' && method === 'GET') {
+      if (!env.QUIZ_DB) {
+        return reply({ error: 'Quiz database haijaunganishwa.' }, 503);
+      }
+
+      const result = await env.QUIZ_DB.prepare(`
+        SELECT id, title, status, starts_at, ends_at,
+               questions_per_day, points_per_question
+        FROM quiz_competitions
+        ORDER BY created_at DESC
+        LIMIT 50
+      `).all();
+
+      return reply({ competitions: result.results || [] });
+    }
+
+    if (path === '/api/quiz/admin/competition' && method === 'POST') {
+      if (!env.QUIZ_DB) {
+        return reply({ error: 'Quiz database haijaunganishwa.' }, 503);
+      }
+
+      try {
+        const data = await request.json();
+        const title = String(data.title || '').trim();
+        const startMs = Date.parse(data.starts_at);
+        const endMs = Date.parse(data.ends_at);
+
+        if (title.length < 2 || title.length > 120 ||
+            !Number.isFinite(startMs) || !Number.isFinite(endMs) ||
+            endMs <= startMs) {
+          return reply({ error: 'Kagua jina na muda wa mashindano.' }, 400);
+        }
+
+        const id = crypto.randomUUID();
+        await env.QUIZ_DB.prepare(`
+          INSERT INTO quiz_competitions
+            (id, title, status, starts_at, ends_at,
+             questions_per_day, points_per_question)
+          VALUES (?, ?, 'scheduled', ?, ?, 10, 2)
+        `).bind(
+          id,
+          title,
+          new Date(startMs).toISOString(),
+          new Date(endMs).toISOString()
+        ).run();
+
+        return reply({ id, message: 'Mashindano yamehifadhiwa.' }, 201);
+      } catch (error) {
+        console.error('NYG quiz competition create error:', error);
+        return reply({ error: 'Imeshindikana kuhifadhi mashindano.' }, 500);
+      }
+    }
+
+    if (path === '/api/quiz/admin/day' && method === 'POST') {
+      if (!env.QUIZ_DB) {
+        return reply({ error: 'Quiz database haijaunganishwa.' }, 503);
+      }
+
+      try {
+        const data = await request.json();
+        const competitionId = String(data.competition_id || '');
+        const dayNumber = Number(data.day_number);
+        const openMs = Date.parse(data.opens_at);
+        const closeMs = Date.parse(data.closes_at);
+
+        if (!competitionId || !Number.isSafeInteger(dayNumber) ||
+            dayNumber < 1 || dayNumber > 31 ||
+            !Number.isFinite(openMs) || !Number.isFinite(closeMs) ||
+            closeMs <= openMs) {
+          return reply({ error: 'Kagua mashindano, siku na muda.' }, 400);
+        }
+
+        const competition = await env.QUIZ_DB.prepare(
+          'SELECT starts_at, ends_at FROM quiz_competitions WHERE id = ?'
+        ).bind(competitionId).first();
+
+        if (!competition ||
+            openMs < Date.parse(competition.starts_at) ||
+            closeMs > Date.parse(competition.ends_at)) {
+          return reply({ error: 'Siku lazima iwe ndani ya muda wa mashindano.' }, 400);
+        }
+
+        const saved = await env.QUIZ_DB.prepare(`
+          INSERT INTO quiz_days
+            (competition_id, day_number, opens_at, closes_at, status)
+          VALUES (?, ?, ?, ?, 'scheduled')
+        `).bind(
+          competitionId,
+          dayNumber,
+          new Date(openMs).toISOString(),
+          new Date(closeMs).toISOString()
+        ).run();
+
+        return reply({
+          id: saved.meta.last_row_id,
+          message: 'Siku ya quiz imehifadhiwa.'
+        }, 201);
+      } catch (error) {
+        console.error('NYG quiz day create error:', error);
+        return reply({
+          error: 'Imeshindikana kuhifadhi siku. Hakikisha siku hiyo haijaongezwa tayari.'
+        }, 500);
+      }
+    }
+
+    if (path === '/api/quiz/admin/question' && method === 'POST') {
+      if (!env.QUIZ_DB) {
+        return reply({ error: 'Quiz database haijaunganishwa.' }, 503);
+      }
+
+      try {
+        const data = await request.json();
+        const dayId = Number(data.day_id);
+        const position = Number(data.position);
+        const questionType = String(data.question_type || '');
+        const prompt = String(data.prompt || '').trim();
+        const optionA = String(data.option_a || '').trim();
+        const optionB = String(data.option_b || '').trim();
+        const optionC = String(data.option_c || '').trim();
+        const optionD = String(data.option_d || '').trim();
+        const correctAnswer = String(data.correct_answer || '').trim();
+
+        if (!Number.isSafeInteger(dayId) || dayId < 1 ||
+            !Number.isSafeInteger(position) || position < 1 || position > 10 ||
+            !['choice', 'short'].includes(questionType) ||
+            prompt.length < 3 || prompt.length > 1000 ||
+            !correctAnswer || correctAnswer.length > 500) {
+          return reply({ error: 'Kagua taarifa za swali.' }, 400);
+        }
+
+        if (questionType === 'choice' &&
+            (!optionA || !optionB || !optionC || !optionD ||
+             !['A', 'B', 'C', 'D'].includes(correctAnswer.toUpperCase()))) {
+          return reply({
+            error: 'Swali la kuchagua linahitaji machaguo A-D na jibu sahihi A, B, C au D.'
+          }, 400);
+        }
+
+        const day = await env.QUIZ_DB.prepare(
+          'SELECT id FROM quiz_days WHERE id = ?'
+        ).bind(dayId).first();
+
+        if (!day) {
+          return reply({ error: 'Siku ya quiz haijapatikana.' }, 404);
+        }
+
+        const saved = await env.QUIZ_DB.prepare(`
+          INSERT INTO quiz_questions
+            (day_id, position, question_type, prompt,
+             option_a, option_b, option_c, option_d,
+             correct_answer, points)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 2)
+        `).bind(
+          dayId,
+          position,
+          questionType,
+          prompt,
+                    questionType === 'choice' ? optionA : null,
+          questionType === 'choice' ? optionB : null,
+          questionType === 'choice' ? optionC : null,
+          questionType === 'choice' ? optionD : null,
+          questionType === 'choice' ? correctAnswer.toUpperCase() : correctAnswer
+        ).run();
+
+        return reply({
+          id: saved.meta.last_row_id,
+          message: 'Swali limehifadhiwa kwa alama 2.'
+        }, 201);
+      } catch (error) {
+        console.error('NYG quiz question create error:', error);
+        return reply({
+          error: 'Imeshindikana kuhifadhi swali. Hakikisha nafasi hiyo haijatumika.'
+        }, 500);
+      }
+    }    
     // NYG JOBS - ADMIN CREATE JOB
     if (path === '/api/jobs/admin/create' && method === 'POST') {
       if (!env.JOBS_DB) {
