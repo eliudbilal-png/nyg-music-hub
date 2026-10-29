@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>NYG Quiz</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #f3f6fb;
+      color: #182230;
+      font-family: Arial, sans-serif;
+    }
+
+    main {
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    header, section, article {
+      background: #fff;
+      border: 1px solid #d8e0ea;
+      border-radius: 14px;
+    }
+
+    header, section {
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    h1, h2 { margin-top: 0; }
+    h1 { color: #123b70; }
+    .note { color: #586779; line-height: 1.6; }
+
+    a, button {
+      display: inline-block;
+      border: 0;
+      border-radius: 9px;
+      padding: 13px 16px;
+      font: inherit;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    a, button {
+      background: #1769e0;
+      color: #fff;
+    }
+
+    button:disabled {
+      opacity: .6;
+    }
+
+    #message {
+      white-space: pre-wrap;
+      font-weight: bold;
+      line-height: 1.5;
+    }
+
+    .question {
+      padding: 18px;
+      margin: 16px 0;
+    }
+
+    .question h2 {
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+    }
+
+    .prompt {
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .answer-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px;
+      margin: 9px 0;
+      border: 1px solid #d8e0ea;
+      border-radius: 9px;
+      line-height: 1.5;
+    }
+
+    .answer-option input {
+      width: 20px;
+      height: 20px;
+      margin: 1px 0 0;
+      flex: 0 0 auto;
+    }
+
+    .short-answer {
+      width: 100%;
+      padding: 13px;
+      border: 1px solid #b8c4d2;
+      border-radius: 9px;
+      font: inherit;
+    }
+
+    .answered {
+      color: #16733c;
+      font-weight: bold;
+    }
+
+    .error { color: #b42318; }
+    .success { color: #16733c; }
+
+    @media (max-width: 480px) {
+      body { padding: 12px; }
+      header, section { padding: 16px; }
+    }
+  </style>
+</head>
+
+<body>
+<main>
+  <header>
+    <h1>NYG Quiz</h1>
+    <p class="note">
+      Jibu maswali ya quiz ya siku. Kila jibu linahifadhiwa mara moja
+      baada ya kubonyeza kitufe chake.
+    </p>
+    <a href="/nyg-signin.html">Ingia kwenye akaunti ya mwanachama</a>
+  </header>
+
+  <section>
+    <h2 id="quizTitle">Quiz ya siku</h2>
+    <p id="quizInfo" class="note">Inapakia quiz...</p>
+    <div id="questions"></div>
+    <button type="button" id="reloadButton">Pakia upya</button>
+  </section>
+
+  <section aria-live="polite">
+    <div id="message" role="status"></div>
+  </section>
+</main>
+
+<script>
+  const questionsBox = document.getElementById('questions');
+  const quizTitle = document.getElementById('quizTitle');
+  const quizInfo = document.getElementById('quizInfo');
+  const message = document.getElementById('message');
+
+  function showMessage(text, type = '') {
+    message.textContent = text;
+    message.className = type;
+  }
+
+  async function loadQuiz() {
+    questionsBox.replaceChildren();
+    quizTitle.textContent = 'Quiz ya siku';
+    quizInfo.textContent = 'Inapakia quiz...';
+    showMessage('');
+
+    try {
+      const response = await fetch('/api/quiz/today', {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { 'accept': 'application/json' }
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        quizInfo.textContent = 'Ingia kwenye akaunti yako ya mwanachama ili kushiriki.';
+        showMessage(
+          result.error || 'Tafadhali ingia kwanza kwenye akaunti ya mwanachama.',
+          'error'
+        );
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(result.error || `Imeshindikana kupata quiz (${response.status}).`);
+      }
+
+      if (result.state !== 'open') {
+        quizInfo.textContent = 'Hakuna quiz iliyo wazi kwa sasa. Rudi tena wakati wa quiz.';
+        showMessage('Quiz haijafunguliwa kwa sasa.');
+        return;
+      }
+
+      quizTitle.textContent = result.title || 'Quiz ya NYG';
+      quizInfo.textContent = `Siku ya quiz: ${result.day_number}`;
+
+      const questions = Array.isArray(result.questions) ? result.questions : [];
+
+      if (questions.length === 0) {
+        showMessage('Maswali ya siku hii hayajapatikana.', 'error');
+        return;
+      }
+
+      questions.forEach((question, index) => {
+        questionsBox.appendChild(makeQuestion(question, index));
+      });
+    } catch (error) {
+      quizInfo.textContent = 'Imeshindikana kupakia quiz.';
+      showMessage(error.message || 'Kagua intaneti kisha ujaribu tena.', 'error');
+    }
+  }
+
+  function makeQuestion(question, index) {
+    const card = document.createElement('article');
+    card.className = 'question';
+
+    const heading = document.createElement('h2');
+    heading.textContent = `Swali ${question.position || index + 1}`;
+    card.appendChild(heading);
+
+    const prompt = document.createElement('p');
+    prompt.className = 'prompt';
+    prompt.textContent = question.prompt || '';
+    card.appendChild(prompt);
+
+    if (Number(question.answered) === 1) {
+      const done = document.createElement('p');
+      done.className = 'answered';
+      done.textContent = 'Jibu lako tayari limehifadhiwa.';
+      card.appendChild(done);
+      return card;
+    }
+
+    const form = document.createElement('form');
+
+    if (question.question_type === 'choice') {
+      [
+        ['A', question.option_a],
+        ['B', question.option_b],
+        ['C', question.option_c],
+        ['D', question.option_d]
+      ].forEach(([letter, optionText]) => {
+        if (!optionText) return;
+
+        const label = document.createElement('label');
+        label.className = 'answer-option';
+
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = `question-${question.id}`;
+        radio.value = letter;
+        radio.required = true;
+
+        const text = document.createElement('span');
+        text.textContent = `${letter}. ${optionText}`;
+
+        label.append(radio, text);
+        form.appendChild(label);
+      });
+    } else {
+      const answer = document.createElement('input');
+      answer.type = 'text';
+      answer.className = 'short-answer';
+      answer.name = `question-${question.id}`;
+      answer.placeholder = 'Andika jibu lako hapa';
+      answer.maxLength = 500;
+      answer.required = true;
+      form.appendChild(answer);
+    }
+
+    const submit = document.createElement('button');
+    submit.type = 'submit';
+    submit.textContent = 'Tuma jibu';
+    form.appendChild(submit);
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      submit.disabled = true;
+      submit.textContent = 'Inahifadhi...';
+
+      const formData = new FormData(form);
+      const answer = String(formData.get(`question-${question.id}`) || '').trim();
+
+      try {
+        const response = await fetch('/api/quiz/answer', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            question_id: question.id,
+            answer
+          })
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(result.error || `Jibu halijahifadhiwa (${response.status}).`);
+        }
+
+        card.replaceChildren();
+        const savedHeading = document.createElement('h2');
+        savedHeading.textContent = `Swali ${question.position || index + 1}`;
+        const savedText = document.createElement('p');
+        savedText.className = 'answered';
+        savedText.textContent = result.message || 'Jibu lako limehifadhiwa.';
+        card.append(savedHeading, savedText);
+      } catch (error) {
+        showMessage(error.message || 'Imeshindikana kuhifadhi jibu.', 'error');
+        submit.disabled = false;
+        submit.textContent = 'Jaribu tena';
+      }
+    });
+
+    card.appendChild(form);
+    return card;
+  }
+
+  document.getElementById('reloadButton').addEventListener('click', loadQuiz);
+  loadQuiz();
+</script>
+</body>
+</html>
