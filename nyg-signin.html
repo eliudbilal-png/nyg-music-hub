@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Ingia | NYG Friends</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px 16px;
+      display: grid;
+      place-items: center;
+      background: #f1f5f9;
+      color: #1e293b;
+      font-family: Arial, sans-serif;
+    }
+
+    main {
+      width: 100%;
+      max-width: 520px;
+      padding: 32px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      box-shadow: 0 12px 35px rgba(15, 23, 42, .08);
+    }
+
+    .brand {
+      margin: 0 0 10px;
+      color: #1769d2;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 32px;
+    }
+
+    .intro {
+      margin: 0 0 26px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      margin: 18px 0 8px;
+      font-weight: 700;
+    }
+
+    input {
+      width: 100%;
+      min-height: 54px;
+      padding: 12px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    .password-wrap {
+      position: relative;
+    }
+
+    .password-wrap input {
+      padding-right: 56px;
+    }
+
+    .password-toggle {
+      position: absolute;
+      top: 50%;
+      right: 8px;
+      width: 44px;
+      min-height: 44px;
+      padding: 0;
+      transform: translateY(-50%);
+      border: 0;
+      background: transparent;
+      color: #475569;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .forgot {
+      display: block;
+      margin: 12px 0 22px;
+      color: #1769d2;
+      text-align: right;
+      text-decoration: none;
+    }
+
+    .submit {
+      width: 100%;
+      min-height: 56px;
+      border: 0;
+      border-radius: 10px;
+      background: #1769d2;
+      color: #fff;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    #message {
+      min-height: 24px;
+      margin: 16px 0 0;
+      line-height: 1.45;
+    }
+
+    #message.error { color: #b42318; }
+    #message.success { color: #137547; }
+
+    .signup {
+      margin: 22px 0 0;
+      color: #64748b;
+      text-align: center;
+    }
+
+    .signup a {
+      color: #1769d2;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    @media (max-width: 480px) {
+      main { padding: 26px 20px; }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <p class="brand">NYG FRIENDS</p>
+    <h1>Ingia</h1>
+    <p class="intro">Ingia kwenye akaunti yako ya mwanachama.</p>
+
+    <form id="signinForm">
+      <label for="email">Barua pepe</label>
+      <input
+        id="email"
+        name="email"
+        type="email"
+        autocomplete="email"
+        required
+      >
+
+      <label for="password">Nenosiri</label>
+      <div class="password-wrap">
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+        >
+        <button
+          class="password-toggle"
+          type="button"
+          aria-label="Onyesha nenosiri"
+          onclick="togglePassword()"
+        >👁</button>
+      </div>
+
+      <a class="forgot" href="/nyg-forgot-password.html">Umesahau nenosiri?</a>
+
+      <button class="submit" id="submitButton" type="submit">Ingia</button>
+      <p id="message" role="status" aria-live="polite"></p>
+    </form>
+
+    <p class="signup">
+      Huna akaunti?
+      <a href="/nyg-signup.html">Jisajili</a>
+    </p>
+  </main>
+
+  <script>
+    function togglePassword() {
+      const field = document.getElementById('password');
+      field.type = field.type === 'password' ? 'text' : 'password';
+    }
+
+    const form = document.getElementById('signinForm');
+    const message = document.getElementById('message');
+    const submitButton = document.getElementById('submitButton');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      message.textContent = '';
+      message.className = '';
+      submitButton.disabled = true;
+      submitButton.textContent = 'Inaingia...';
+
+      try {
+        const response = await fetch('/api/members/signin', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            email: form.email.value.trim(),
+            password: form.password.value
+          })
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Imeshindikana kuingia. Jaribu tena.');
+        }
+
+        window.location.href = result.redirect || '/nyg-dashboard.html';
+      } catch (error) {
+        message.textContent = error.message;
+        message.className = 'error';
+        submitButton.disabled = false;
+        submitButton.textContent = 'Ingia';
+      }
+    });
+  </script>
+</body>
+</html>
