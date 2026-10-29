@@ -43,7 +43,173 @@ async function handleMemberAuth(request, env, url, path, method) {
       return reply({ error: 'Ombi halijaruhusiwa.' }, 403);
     }
 
-    if (!env.EMAIL)
+    if (!env.EMAIL) {
+      return reply({ error: 'Huduma ya barua pepe haijaunganishwa.' }, 503);
+    }
+
+    const data = await request.json().catch(() => null);
+    const fullName = typeof data?.full_name === 'string'
+      ? data.full_name.trim()
+      : '';
+    const email = typeof data?.email === 'string'
+      ? data.email.trim()
+      : '';
+    const password = typeof data?.password === 'string'
+      ? data.password
+      : '';
+
+    if (fullName.length < 2 || fullName.length > 100) {
+      return reply({ error: 'Jina kamili liwe na herufi 2 hadi 100.' }, 400);
+    }
+
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return reply({ error: 'Barua pepe si sahihi.' }, 400);
+    }
+
+    if (password.length < 8 || password.length > 200) {
+      return reply({ error: 'Nenosiri liwe na angalau herufi 8.' }, 400);
+    }
+
+    const normalizedEmail = email.toLowerCase();
+    const memberId = crypto.randomUUID();
+    const memberCode = 'NYG-' +
+      crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase();
+
+    const rawTokenBytes = crypto.getRandomValues(new Uint8Array(32));
+    const rawToken = Array.from(
+      rawTokenBytes,
+      byte => byte.toString(16).padStart(2, '0')
+    ).join('');
+
+    const tokenDigest = await crypto.subtle.digest(
+      'SHA-256',
+      enc.encode(rawToken)
+    );
+    const tokenHash = Array.from(
+      new Uint8Array(tokenDigest),
+      byte => byte.toString(16).padStart(2, '0')
+    ).join('');
+
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const passwordKey = await crypto.subtle.importKey(
+      'raw',
+      enc.encode(password),
+      'PBKDF2',
+      false,
+      ['deriveBits']
+    );
+
+    const passwordBits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+      passwordKey,
+      256
+    );
+
+    const passwordHash = 'pbkdf2-sha256$100000$' +
+      Array.from(salt, byte => byte.toString(16).padStart(2, '0')).join('') +
+      '$' +
+      Array.from(new Uint8Array(passwordBits),
+        byte => byte.toString(16).padStart(2, '0')).join('');
+
+    const now = Math.floor(Date.now() / 1000);
+    const expiresAt = now + (24 * 60 * 60);
+
+    try {
+      await env.MEMBERS_DB.prepare(
+        "INSERT INTO members (id, member_code, full_name, email, email_normalized, password_hash, status) VALUES (?, ?, ?, ?, ?, ?, 'pending_email')"
+      ).bind(
+        memberId,
+        memberCode,
+        fullName,
+        email,
+        normalizedEmail,
+        passwordHash
+      ).run();
+
+      await env.MEMBERS_DB.prepare(
+        'INSERT INTO member_email_verification_tokens (token_hash, member_id, expires_at, used_at, created_at) VALUES (?, ?, ?, NULL, ?)'
+      ).bind(tokenHash, memberId, expiresAt, now).run();
+
+      const verifyUrl = new URL('/api/members/verify', url.origin);
+      verifyUrl.searchParams.set('token', rawToken);
+
+      await env.EMAIL.send({
+        to: email,
+        from: 'noreply@mail.nygmusichub.com',
+        subject: 'Thibitisha barua pepe yako - NYG Music Hub',
+        text: 'Thibitisha akaunti yako kwa kufungua kiungo hiki: ' +
+          verifyUrl.toString(),
+        html: '<p>Karibu NYG Music Hub.</p><p><a href="' +
+          verifyUrl.toString() +
+          '">Thibitisha barua pepe yako</a></p><p>Kiungo kitaisha baada ya saa 24.</p>'
+      });
+
+      return reply({
+        message: 'Akaunti imeundwa. Angalia barua pepe yako ili kuthibitisha.'
+      }, 201);
+    } catch (error) {
+      await env.MEMBERS_DB.prepare(
+        'DELETE FROM members WHERE id = ?'
+      ).bind(memberId).run().catch(() => {});
+
+      if (/unique|constraint/i.test(String(error?.message || ''))) {
+        return reply({ error: 'Barua pepe hii tayari imesajiliwa.' }, 409);
+      }
+
+      return reply({
+        error: 'Usajili haujakamilika. Jaribu tena baadaye.'
+      }, 500);
+    }
+  }
+
+  const rawToken = url.searchParams.get('token') || '';
+
+  if (!/^[a-f0-9]{64}$/i.test(rawToken)) {
+    return reply({ error: 'Kiungo cha uthibitisho si sahihi au kimeisha muda.' }, 400);
+  }
+
+  const tokenDigest = await crypto.subtle.digest(
+    'SHA-256',
+    enc.encode(rawToken)
+  );
+  const tokenHash = Array.from(
+    new Uint8Array(tokenDigest),
+    byte => byte.toString(16).padStart(2, '0')
+  ).join('');
+  const now = Math.floor(Date.now() / 1000);
+
+  try {
+    const record = await env.MEMBERS_DB.prepare(
+      'SELECT member_id, expires_at, used_at FROM member_email_verification_tokens WHERE token_hash = ?'
+    ).bind(tokenHash).first();
+
+    if (!record || record.used_at !== null || Number(record.expires_at) <= now) {
+      return reply({
+        error: 'Kiungo si sahihi, kimetumika, au muda wake umeisha.'
+      }, 400);
+    }
+
+    const verifiedAt = new Date().toISOString();
+
+    await env.MEMBERS_DB.batch([
+      env.MEMBERS_DB.prepare(
+        "UPDATE members SET status = 'active', verified_at = ?, updated_at = ? WHERE id = ? AND status = 'pending_email'"
+      ).bind(verifiedAt, verifiedAt, record.member_id),
+
+      env.MEMBERS_DB.prepare(
+        'UPDATE member_email_verification_tokens SET used_at = ? WHERE token_hash = ? AND used_at IS NULL'
+      ).bind(now, tokenHash)
+    ]);
+
+    return reply({
+      message: 'Barua pepe imethibitishwa. Akaunti yako iko tayari.'
+    });
+  } catch {
+    return reply({
+      error: 'Uthibitishaji haujakamilika. Jaribu tena baadaye.'
+    }, 500);
+  }
+}
 const allowedVideos = new Set([
   'EwOFoJZerDs', '-lkZ63H_pqs', 'aAxYDrwIdsw', '80v3e5pqBiE', '_pbNPbDjArw'
 ]);
