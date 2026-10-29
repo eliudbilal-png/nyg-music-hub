@@ -41,6 +41,11 @@
       "binding": "EVENTS_DB",
       "database_name": "nyg-events-db",
       "database_id": "a9771c90-092c-4870-983e-7e12f69d2724"
-    }
+    },
+        {
+          "binding": "MEMBERS_DB",
+          "database_name": "nyg-members-db",
+          "database_id": "3dc4d294-2253-4987-b87b-012cd7710c9a"
+        }
   ]
 }
