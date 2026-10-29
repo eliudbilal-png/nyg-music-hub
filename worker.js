@@ -29,15 +29,105 @@ const reply = (data, status = 200, headers = {}) => new Response(JSON.stringify(
   headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers }
 });
 async function handleMemberAuth(request, env, url, path, method) {
-  const signup = path === '/api/members/signup' && method === 'POST';
-  const verify = path === '/api/members/verify' && method === 'GET';
+const signup = path === '/api/members/signup' && method === 'POST';
+const signin = path === '/api/members/signin' && method === 'POST';
+const verify = path === '/api/members/verify' && method === 'GET';
 
-  if (!signup && !verify) return null;
+if (!signup && !signin && !verify) return null;
 
   if (!env.MEMBERS_DB) {
     return reply({ error: 'Database ya wanachama haijaunganishwa.' }, 503);
   }
+  if (signin) {
+    if (!sameOrigin(request, url)) {
+      return reply({ error: 'Ombi halijaruhusiwa.' }, 403);
+    }
 
+    if (!env.MEMBER_SESSION_SECRET) {
+      return reply({ error: 'Huduma ya kuingia haijaandaliwa.' }, 503);
+    }
+
+    const data = await request.json().catch(() => null);
+    const email = typeof data?.email === 'string'
+      ? data.email.trim().toLowerCase()
+      : '';
+    const password = typeof data?.password === 'string'
+      ? data.password
+      : '';
+
+    if (!email || !password || password.length > 200) {
+      return reply({ error: 'Barua pepe au nenosiri si sahihi.' }, 401);
+    }
+
+    const member = await env.MEMBERS_DB.prepare(
+      'SELECT id, password_hash, status FROM members WHERE email_normalized = ?'
+    ).bind(email).first();
+
+    if (!member) {
+      return reply({ error: 'Barua pepe au nenosiri si sahihi.' }, 401);
+    }
+
+    const parts = String(member.password_hash || '').split('$');
+
+    if (
+      parts.length !== 4 ||
+      parts[0] !== 'pbkdf2-sha256' ||
+      parts[1] !== '100000' ||
+      !/^[a-f0-9]{32}$/i.test(parts[2]) ||
+      !/^[a-f0-9]{64}$/i.test(parts[3])
+    ) {
+      return reply({ error: 'Barua pepe au nenosiri si sahihi.' }, 401);
+    }
+
+    const salt = new Uint8Array(
+      parts[2].match(/.{2}/g).map(byte => parseInt(byte, 16))
+    );
+
+    const passwordKey = await crypto.subtle.importKey(
+      'raw',
+      enc.encode(password),
+      'PBKDF2',
+      false,
+      ['deriveBits']
+    );
+
+    const passwordBits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+      passwordKey,
+      256
+    );
+
+    const actualHash = Array.from(
+      new Uint8Array(passwordBits),
+      byte => byte.toString(16).padStart(2, '0')
+    ).join('');
+
+    if (actualHash !== parts[3].toLowerCase()) {
+      return reply({ error: 'Barua pepe au nenosiri si sahihi.' }, 401);
+    }
+
+    if (member.status !== 'active') {
+      return reply({
+        error: 'Thibitisha kwanza akaunti kupitia kiungo tulichotuma kwenye email yako.'
+      }, 403);
+    }
+
+    const expires = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
+    const payload = base64url(
+      enc.encode(JSON.stringify({ sub: member.id, exp: expires }))
+    );
+    const signature = await sign(payload, env.MEMBER_SESSION_SECRET);
+
+    return reply(
+      { message: 'Umeingia.', redirect: '/nyg-dashboard.html' },
+      200,
+      {
+        'set-cookie':
+          'nyg_member=' + payload + '.' + signature +
+          '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800'
+      }
+    );
+  }
   if (signup) {
     if (!sameOrigin(request, url)) {
       return reply({ error: 'Ombi halijaruhusiwa.' }, 403);
