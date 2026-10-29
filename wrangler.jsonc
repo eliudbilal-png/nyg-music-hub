@@ -52,6 +52,11 @@
           "binding": "MEMBERS_DB",
           "database_name": "nyg-members-db",
           "database_id": "3dc4d294-2253-4987-b87b-012cd7710c9a"
-        }
+        },
+{
+  "binding": "QUIZ_DB",
+  "database_name": "nyg_quiz_db",
+  "database_id": "6a034628-68e5-4fa6-a288-594abb9a8c7b"
+}
   ]
 }
