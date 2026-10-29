@@ -31,12 +31,77 @@ const reply = (data, status = 200, headers = {}) => new Response(JSON.stringify(
 async function handleMemberAuth(request, env, url, path, method) {
 const signup = path === '/api/members/signup' && method === 'POST';
 const signin = path === '/api/members/signin' && method === 'POST';
+const me = path === '/api/members/me' && method === 'GET';
 const verify = path === '/api/members/verify' && method === 'GET';
 
-if (!signup && !signin && !verify) return null;
+if (!signup && !signin && !me && !verify) return null;
 
   if (!env.MEMBERS_DB) {
     return reply({ error: 'Database ya wanachama haijaunganishwa.' }, 503);
+  }
+    if (me) {
+    if (!env.MEMBER_SESSION_SECRET) {
+      return reply({ error: 'Huduma ya kuingia haijaandaliwa.' }, 503);
+    }
+
+    const token = (request.headers.get('Cookie') || '')
+      .split(';')
+      .map(value => value.trim())
+      .find(value => value.startsWith('nyg_member='))
+      ?.slice('nyg_member='.length);
+
+    if (!token) {
+      return reply({ error: 'Tafadhali ingia tena.' }, 401);
+    }
+
+    try {
+      const [payload, signature, extra] = token.split('.');
+
+      if (!payload || !signature || extra) {
+        return reply({ error: 'Tafadhali ingia tena.' }, 401);
+      }
+
+      const expected = await sign(payload, env.MEMBER_SESSION_SECRET);
+
+      if (signature.length !== expected.length) {
+        return reply({ error: 'Tafadhali ingia tena.' }, 401);
+      }
+
+      let difference = 0;
+      for (let i = 0; i < signature.length; i++) {
+        difference |= signature.charCodeAt(i) ^ expected.charCodeAt(i);
+      }
+
+      if (difference !== 0) {
+        return reply({ error: 'Tafadhali ingia tena.' }, 401);
+      }
+
+      const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+      const binary = atob(padded);
+      const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+      const session = JSON.parse(new TextDecoder().decode(bytes));
+
+      if (
+        !session.sub ||
+        !Number.isSafeInteger(session.exp) ||
+        session.exp <= Math.floor(Date.now() / 1000)
+      ) {
+        return reply({ error: 'Tafadhali ingia tena.' }, 401);
+      }
+
+      const member = await env.MEMBERS_DB.prepare(
+        "SELECT member_code, full_name, email FROM members WHERE id = ? AND status = 'active'"
+      ).bind(session.sub).first();
+
+      if (!member) {
+        return reply({ error: 'Akaunti haijapatikana.' }, 401);
+      }
+
+      return reply({ member });
+    } catch {
+      return reply({ error: 'Tafadhali ingia tena.' }, 401);
+    }
   }
   if (signin) {
     if (!sameOrigin(request, url)) {
