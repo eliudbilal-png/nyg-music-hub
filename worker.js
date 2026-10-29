@@ -394,7 +394,49 @@ function sameOrigin(request, url) {
   }
   return false;
 }
+async function getSignedInQuizMember(request, env) {
+  if (!env.MEMBERS_DB || !env.MEMBER_SESSION_SECRET) return null;
 
+  const token = (request.headers.get('Cookie') || '')
+    .split(';')
+    .map(value => value.trim())
+    .find(value => value.startsWith('nyg_member='))
+    ?.slice('nyg_member='.length);
+
+  if (!token) return null;
+
+  try {
+    const [payload, signature, extra] = token.split('.');
+    if (!payload || !signature || extra) return null;
+
+    const expected = await sign(payload, env.MEMBER_SESSION_SECRET);
+    if (signature.length !== expected.length) return null;
+
+    let difference = 0;
+    for (let i = 0; i < signature.length; i++) {
+      difference |= signature.charCodeAt(i) ^ expected.charCodeAt(i);
+    }
+    if (difference !== 0) return null;
+
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+    const session = JSON.parse(new TextDecoder().decode(bytes));
+
+    if (
+      !session.sub ||
+      !Number.isSafeInteger(session.exp) ||
+      session.exp <= Math.floor(Date.now() / 1000)
+    ) return null;
+
+    return await env.MEMBERS_DB.prepare(
+      "SELECT id, member_code, full_name FROM members WHERE id = ? AND status = 'active'"
+    ).bind(session.sub).first();
+  } catch {
+    return null;
+  }
+}
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
