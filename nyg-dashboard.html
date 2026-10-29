@@ -58,11 +58,24 @@
     }
 
     .ranking li {
+      
       padding: 8px 0;
       border-bottom: 1px solid #edf0f5;
       line-height: 1.5;
     }
+.ranking li:nth-child(-n+3) {
+  background: #fff7df;
+  border: 1px solid #f1c75b;
+  border-radius: 10px;
+  margin: 8px 0;
+  padding: 12px;
+  font-weight: 700;
+}
 
+.ranking li:nth-child(-n+3)::after {
+  content: ' 🎁 ZAWADI';
+  color: #a66b00;
+}
     .muted { color: #687386; }
     a {
       display: block;
@@ -74,6 +87,7 @@
       text-align: center;
       text-decoration: none;
       font-weight: 700;
+
     }
   </style>
 </head>
