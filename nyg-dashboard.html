@@ -36,7 +36,34 @@
     .detail { padding: 14px 0; border-bottom: 1px solid #e5eaf1; }
     .label { display: block; margin-bottom: 5px; color: #687386; }
     #status { text-align: center; }
+    .quiz-results {
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid #e5eaf1;
+    }
 
+    .quiz-card {
+      margin: 14px 0;
+      padding: 14px;
+      border: 1px solid #dce3ed;
+      border-radius: 12px;
+    }
+
+    .quiz-card h3 { margin: 0 0 8px; }
+    .quiz-card p { margin: 8px 0; }
+
+    .ranking {
+      margin: 12px 0 0;
+      padding-left: 28px;
+    }
+
+    .ranking li {
+      padding: 8px 0;
+      border-bottom: 1px solid #edf0f5;
+      line-height: 1.5;
+    }
+
+    .muted { color: #687386; }
     a {
       display: block;
       margin-top: 24px;
@@ -70,6 +97,11 @@
         <span class="label">Namba ya mwanachama</span>
         <strong id="memberCode"></strong>
       </div>
+            <section id="quizResults" class="quiz-results">
+        <h2>Matokeo ya Quiz</h2>
+        <p id="quizResultsStatus" class="muted">Inapakia matokeo…</p>
+        <div id="quizResultsList"></div>
+      </section>
       <a href="/nyg-market-place.html">Endelea kwenye NYG Friends</a>
     </section>
   </main>
@@ -102,6 +134,7 @@
 
         status.hidden = true;
         document.getElementById('details').hidden = false;
+        loadQuizResults();
       } catch {
         status.textContent =
           'Imeshindikana kuwasiliana na mfumo. Jaribu tena.';
