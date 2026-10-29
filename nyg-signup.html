@@ -5,7 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,follow">
   <title>Jisajili | NYG Friends</title>
+.password-wrap {
+  position: relative;
+}
 
+.password-wrap input {
+  padding-right: 54px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+}
   <style>
     * { box-sizing: border-box; }
 
@@ -122,6 +142,27 @@
       text-align: center;
       text-decoration: none;
     }
+    .password-wrap {
+  position: relative;
+}
+
+.password-wrap input {
+  padding-right: 54px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+}
   </style>
 </head>
 
@@ -156,26 +197,16 @@
       >
 
       <label for="password">Nenosiri</label>
-      <input
-        id="password"
-        name="password"
-        type="password"
-        minlength="8"
-        maxlength="200"
-        autocomplete="new-password"
-        required
-      >
+<div class="password-wrap">
+  <input id="password" name="password" type="password" minlength="8" maxlength="200" autocomplete="new-password" required>
+  <button class="password-toggle" type="button" onclick="togglePassword('password', this)">👁</button>
+</div>
 
       <label for="confirm_password">Rudia nenosiri</label>
-      <input
-        id="confirm_password"
-        name="confirm_password"
-        type="password"
-        minlength="8"
-        maxlength="200"
-        autocomplete="new-password"
-        required
-      >
+<div class="password-wrap">
+  <input id="confirm_password" name="confirm_password" type="password" minlength="8" maxlength="200" autocomplete="new-password" required>
+  <button class="password-toggle" type="button" onclick="togglePassword('confirm_password', this)">👁</button>
+</div>
 
       <label class="terms">
         <input id="accept_terms" type="checkbox" required>
@@ -232,9 +263,7 @@
           throw new Error(result.error || 'Usajili haujakamilika.');
         }
 
-        message.textContent =
-          result.message ||
-          'Angalia barua pepe yako ili kuthibitisha akaunti.';
+        message.textContent = 'Usajili umefanikiwa. Nenda kwenye barua pepe yako kuthibitisha akaunti.';
         message.className = 'success';
         form.reset();
       } catch (error) {
@@ -247,6 +276,11 @@
         button.textContent = 'Jisajili';
       }
     });
+    function togglePassword(id, button) {
+  const field = document.getElementById(id);
+  field.type = field.type === 'password' ? 'text' : 'password';
+}
   </script>
+  
 </body>
 </html>
