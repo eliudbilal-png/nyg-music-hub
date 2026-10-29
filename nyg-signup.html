@@ -14,4 +14,239 @@
       min-height: 100vh;
       padding: 24px 16px;
       display: grid;
-      place-items: center
+      place-items: center;
+      background: #f2f5fa;
+      color: #172033;
+      font-family: Arial, sans-serif;
+    }
+
+    main {
+      width: 100%;
+      max-width: 460px;
+      padding: 30px 24px;
+      background: #fff;
+      border: 1px solid #dce3ed;
+      border-radius: 16px;
+      box-shadow: 0 12px 35px rgba(18, 38, 63, .09);
+    }
+
+    .brand {
+      margin: 0 0 8px;
+      color: #1769d2;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 27px;
+    }
+
+    .intro {
+      margin: 0 0 24px;
+      color: #647086;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      margin: 16px 0 7px;
+      font-weight: 700;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      min-height: 48px;
+      padding: 12px;
+      border: 1px solid #b9c4d2;
+      border-radius: 9px;
+      font: inherit;
+    }
+
+    input:focus {
+      outline: 3px solid rgba(23, 105, 210, .18);
+      border-color: #1769d2;
+    }
+
+    .terms {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 19px 0;
+      color: #455166;
+      font-weight: 400;
+      line-height: 1.45;
+    }
+
+    .terms input {
+      width: 18px;
+      height: 18px;
+      margin: 1px 0 0;
+      flex: 0 0 auto;
+    }
+
+    button {
+      width: 100%;
+      min-height: 49px;
+      border: 0;
+      border-radius: 9px;
+      background: #1769d2;
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .65;
+      cursor: wait;
+    }
+
+    #message {
+      min-height: 24px;
+      margin: 16px 0 0;
+      line-height: 1.45;
+    }
+
+    #message.error { color: #b42318; }
+    #message.success { color: #137547; }
+
+    .back {
+      display: block;
+      margin-top: 20px;
+      color: #1769d2;
+      text-align: center;
+      text-decoration: none;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <p class="brand">NYG Friends</p>
+    <h1>Jisajili</h1>
+    <p class="intro">
+      Fungua akaunti ya uanachama kwa kutumia jina lako, barua pepe na nenosiri.
+    </p>
+
+    <form id="signupForm">
+      <label for="full_name">Jina kamili</label>
+      <input
+        id="full_name"
+        name="full_name"
+        type="text"
+        minlength="2"
+        maxlength="100"
+        autocomplete="name"
+        required
+      >
+
+      <label for="email">Barua pepe</label>
+      <input
+        id="email"
+        name="email"
+        type="email"
+        maxlength="254"
+        autocomplete="email"
+        required
+      >
+
+      <label for="password">Nenosiri</label>
+      <input
+        id="password"
+        name="password"
+        type="password"
+        minlength="8"
+        maxlength="200"
+        autocomplete="new-password"
+        required
+      >
+
+      <label for="confirm_password">Rudia nenosiri</label>
+      <input
+        id="confirm_password"
+        name="confirm_password"
+        type="password"
+        minlength="8"
+        maxlength="200"
+        autocomplete="new-password"
+        required
+      >
+
+      <label class="terms">
+        <input id="accept_terms" type="checkbox" required>
+        <span>Ninakubali masharti ya uanachama wa NYG Friends.</span>
+      </label>
+
+      <button id="submitButton" type="submit">Jisajili</button>
+      <p id="message" role="status" aria-live="polite"></p>
+    </form>
+
+    <a class="back" href="nyg-market-place.html">Rudi NYG Market Place</a>
+  </main>
+
+  <script>
+    const form = document.getElementById('signupForm');
+    const button = document.getElementById('submitButton');
+    const message = document.getElementById('message');
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      message.textContent = '';
+      message.className = '';
+
+      const fullName = document.getElementById('full_name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword =
+        document.getElementById('confirm_password').value;
+
+      if (password !== confirmPassword) {
+        message.textContent =
+          'Nenosiri halifanani. Yaangalie kisha ujaribu tena.';
+        message.className = 'error';
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'Inasajili...';
+
+      try {
+        const response = await fetch('/api/members/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            full_name: fullName,
+            email: email,
+            password: password
+          })
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Usajili haujakamilika.');
+        }
+
+        message.textContent =
+          result.message ||
+          'Angalia barua pepe yako ili kuthibitisha akaunti.';
+        message.className = 'success';
+        form.reset();
+      } catch (error) {
+        message.textContent =
+          error.message ||
+          'Imeshindikana kuwasiliana na mfumo. Jaribu tena.';
+        message.className = 'error';
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Jisajili';
+      }
+    });
+  </script>
+</body>
+</html>
