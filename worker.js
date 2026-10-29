@@ -372,7 +372,6 @@ return new Response(null, {
       '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800'
   }
 });
-    });
   } catch {
     return reply({
       error: 'Uthibitishaji haujakamilika. Jaribu tena baadaye.'
