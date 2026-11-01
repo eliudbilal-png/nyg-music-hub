@@ -22,7 +22,27 @@
       max-width: 720px;
       margin: 0 auto;
     }
+    .quiz-box {
+      background: #fff;
+      border: 1px solid #d8e0ea;
+      border-radius: 14px;
+      padding: 20px;
+    }
 
+    .quiz-box > header,
+    .quiz-box > section {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      margin: 0;
+    }
+
+    .quiz-box > header {
+      padding-bottom: 18px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid #d8e0ea;
+    }
     header, section, article {
       background: #fff;
       border: 1px solid #d8e0ea;
@@ -101,6 +121,7 @@
       padding: 13px;
       border: 1px solid #b8c4d2;
       border-radius: 9px;
+    
       font: inherit;
     }
 
@@ -116,11 +137,33 @@
       body { padding: 12px; }
       header, section { padding: 16px; }
     }
+        .quiz-box {
+      background: #fff;
+      border: 1px solid #d8e0ea;
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    .quiz-box > header,
+    .quiz-box > section {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      margin: 0;
+    }
+
+    .quiz-box > header {
+      padding-bottom: 18px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid #d8e0ea;
+    }
   </style>
 </head>
 
 <body>
 <main>
+        <div class="quiz-box">
   <header>
     <h1>NYG Quiz</h1>
     <p class="note">
@@ -140,6 +183,7 @@
   <section aria-live="polite">
     <div id="message" role="status"></div>
   </section>
+      </div>    
 </main>
 
 <script>
