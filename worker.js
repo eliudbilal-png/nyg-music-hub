@@ -450,6 +450,73 @@ async function getSignedInQuizMember(request, env) {
     return null;
   }
 }
+const PUZZLE_STAGE_COUNT = 20;
+
+function puzzleWeekStart(timestamp = Date.now()) {
+  const localDate = new Date(timestamp + 3 * 60 * 60 * 1000);
+  const daysSinceMonday = (localDate.getUTCDay() + 6) % 7;
+  localDate.setUTCDate(localDate.getUTCDate() - daysSinceMonday);
+  localDate.setUTCHours(0, 0, 0, 0);
+  return localDate.toISOString().slice(0, 10);
+}
+
+function previousPuzzleWeekStart(weekStart) {
+  const date = new Date(weekStart + 'T00:00:00.000Z');
+  date.setUTCDate(date.getUTCDate() - 7);
+  return date.toISOString().slice(0, 10);
+}
+
+async function ensurePuzzleResultsTable(env) {
+  await env.QUIZ_DB.prepare(`
+    CREATE TABLE IF NOT EXISTS nyg_puzzle_stage_results (
+      member_id TEXT NOT NULL,
+      week_start TEXT NOT NULL,
+      stage_id INTEGER NOT NULL CHECK(stage_id BETWEEN 1 AND 20),
+      elapsed_seconds INTEGER NOT NULL CHECK(elapsed_seconds >= 0),
+      moves INTEGER NOT NULL CHECK(moves >= 0),
+      completed_at TEXT NOT NULL,
+      PRIMARY KEY (member_id, week_start, stage_id)
+    )
+  `).run();
+}
+
+async function getPuzzleLeaderboard(env, weekStart) {
+  const result = await env.QUIZ_DB.prepare(`
+    SELECT member_id,
+           COUNT(*) AS stages_completed,
+           SUM(elapsed_seconds) AS total_seconds,
+           SUM(moves) AS total_moves
+    FROM nyg_puzzle_stage_results
+    WHERE week_start = ?
+    GROUP BY member_id
+    ORDER BY stages_completed DESC, total_moves ASC, total_seconds ASC, member_id ASC
+    LIMIT 100
+  `).bind(weekStart).all();
+
+  const rows = result.results || [];
+  if (rows.length === 0) return [];
+
+  const ids = rows.map(row => row.member_id);
+  const placeholders = ids.map(() => '?').join(',');
+  const membersResult = await env.MEMBERS_DB.prepare(
+    `SELECT id, full_name, member_code FROM members WHERE id IN (${placeholders})`
+  ).bind(...ids).all();
+  const members = new Map(
+    (membersResult.results || []).map(member => [member.id, member])
+  );
+
+  return rows.map((row, index) => {
+    const member = members.get(row.member_id) || {};
+    return {
+      rank: index + 1,
+      full_name: member.full_name || 'Mwanachama',
+      member_code: member.member_code || '',
+      stages_completed: Number(row.stages_completed || 0),
+      total_seconds: Number(row.total_seconds || 0),
+      total_moves: Number(row.total_moves || 0)
+    };
+  });
+}
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -702,6 +769,122 @@ if (row.member_id) {
 
       return reply({ error: 'Njia ya quiz haijapatikana.' }, 404);
     } 
+    if (path === '/api/puzzle/results' && method === 'GET') {
+  if (!env.QUIZ_DB || !env.MEMBERS_DB) {
+    return reply({ error: 'Database ya mchezo haijaunganishwa.' }, 503);
+  }
+
+  const member = await getSignedInQuizMember(request, env);
+  if (!member) return reply({ error: 'Tafadhali ingia kwanza.' }, 401);
+
+  try {
+    await ensurePuzzleResultsTable(env);
+    const weekStart = puzzleWeekStart();
+    const previousWeekStart = previousPuzzleWeekStart(weekStart);
+    const ownResult = await env.QUIZ_DB.prepare(`
+      SELECT stage_id, elapsed_seconds, moves, completed_at
+      FROM nyg_puzzle_stage_results
+      WHERE member_id = ? AND week_start = ?
+      ORDER BY stage_id ASC
+    `).bind(member.id, weekStart).all();
+    const myResults = ownResult.results || [];
+
+    let nextStage = 1;
+    while (
+      nextStage <= PUZZLE_STAGE_COUNT &&
+      myResults.some(row => Number(row.stage_id) === nextStage)
+    ) {
+      nextStage++;
+    }
+
+    const leaderboard = await getPuzzleLeaderboard(env, weekStart);
+    const previousLeaderboard = await getPuzzleLeaderboard(env, previousWeekStart);
+
+    return reply({
+      week_start: weekStart,
+      next_stage: nextStage,
+      my_results: myResults.map(row => ({
+        stage_id: Number(row.stage_id),
+        elapsed_seconds: Number(row.elapsed_seconds),
+        moves: Number(row.moves),
+        completed_at: row.completed_at
+      })),
+      leaderboard,
+      previous_week: {
+        week_start: previousWeekStart,
+        leaderboard: previousLeaderboard
+      }
+    });
+  } catch (error) {
+    console.error('NYG puzzle results error:', error);
+    return reply({ error: 'Imeshindikana kupata matokeo ya mchezo.' }, 500);
+  }
+}
+
+if (path === '/api/puzzle/complete' && method === 'POST') {
+  if (!env.QUIZ_DB || !env.MEMBERS_DB) {
+    return reply({ error: 'Database ya mchezo haijaunganishwa.' }, 503);
+  }
+  if (!sameOrigin(request, url)) {
+    return reply({ error: 'Forbidden origin' }, 403);
+  }
+
+  const member = await getSignedInQuizMember(request, env);
+  if (!member) return reply({ error: 'Tafadhali ingia kwanza.' }, 401);
+
+  try {
+    const data = await request.json();
+    const stageId = Number(data.stage_id);
+    const elapsedSeconds = Number(data.elapsed_seconds);
+    const moves = Number(data.moves);
+
+    if (
+      !Number.isSafeInteger(stageId) || stageId < 1 ||
+      stageId > PUZZLE_STAGE_COUNT ||
+      !Number.isSafeInteger(elapsedSeconds) || elapsedSeconds < 0 ||
+      elapsedSeconds > 2147483647 ||
+      !Number.isSafeInteger(moves) || moves < 0 ||
+      moves > 2147483647
+    ) {
+      return reply({ error: 'Taarifa za matokeo si sahihi.' }, 400);
+    }
+
+    await ensurePuzzleResultsTable(env);
+    const weekStart = puzzleWeekStart();
+    const countResult = await env.QUIZ_DB.prepare(`
+      SELECT COUNT(*) AS completed_count
+      FROM nyg_puzzle_stage_results
+      WHERE member_id = ? AND week_start = ?
+    `).bind(member.id, weekStart).first();
+
+    const expectedStage = Number(countResult?.completed_count || 0) + 1;
+    if (stageId !== expectedStage) {
+      return reply({
+        error: 'Stage hii haiko kwenye mpangilio unaofuata wa wiki hii.'
+      }, 409);
+    }
+
+    await env.QUIZ_DB.prepare(`
+      INSERT INTO nyg_puzzle_stage_results
+        (member_id, week_start, stage_id, elapsed_seconds, moves, completed_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(
+      member.id,
+      weekStart,
+      stageId,
+      elapsedSeconds,
+      moves,
+      new Date().toISOString()
+    ).run();
+
+    return reply({ saved: true, week_start: weekStart, stage_id: stageId }, 201);
+  } catch (error) {
+    console.error('NYG puzzle save error:', error);
+    return reply({
+      error: 'Imeshindikana kuhifadhi matokeo. Jaribu tena.'
+    }, 500);
+  }
+}
 // NYG EVENTS - EDIT NA DELETE
 if (
   ['/api/events/admin/update', '/api/events/admin/delete'].includes(path) &&
