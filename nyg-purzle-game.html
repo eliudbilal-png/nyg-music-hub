@@ -112,7 +112,7 @@
       .grid { gap: 3px; }
       .tile { border-radius: 5px; }
     }
-    .tile:not(.special-tile):not(.free-tile) {
+    .tile:not(.letter-tile):not(.free-tile) {
   background: #ffffff;
   color: #182230;
   border-color: #cbd5e1;
@@ -123,12 +123,19 @@
   color: #123b70;
   border-color: #55b8ef;
 }
-    .tile.special-tile {
-  background: #ff3385 !important;
-  color: #ffffff !important;
-  border-color: #ff3385 !important;
+
+.tile.letter-tile:not(.blank-letter) {
+  background: #ff3385;
+  color: #ffffff;
+  border-color: #ff3385;
   text-shadow: none;
   box-shadow: 0 0 12px rgba(255, 51, 133, 0.6);
+}
+
+.tile.blank-letter {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: none;
 }
   </style>
 </head>
