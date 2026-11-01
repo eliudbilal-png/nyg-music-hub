@@ -270,15 +270,17 @@
     }
 
     function neighborsOf(index) {
-      const row = Math.floor(index / 6);
-      const col = index % 6;
-      const result = [];
-      if (row > 0) result.push(index - 6);
-      if (row < 5) result.push(index + 6);
-      if (col > 0) result.push(index - 1);
-      if (col < 5) result.push(index + 1);
-      return result;
-    }
+  const row = Math.floor(index / 6);
+  const col = index % 6;
+  const result = [];
+
+  if (row > 0) result.push(index - 6);
+  if (col > 0) result.push(index - 1);
+  if (row < 5) result.push(index + 6);
+  if (col < 5) result.push(index + 1);
+
+  return result;
+}
 
     function moveTile(index) {
       if (isSaving) return;
