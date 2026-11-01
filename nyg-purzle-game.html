@@ -221,6 +221,25 @@
     let gameStarted = false;
     let isSaving = false;
     let pendingResult = null;
+        let memberAccess = "checking";
+
+    function showParticipationMessage() {
+      if (memberAccess === "guest") {
+        message.innerHTML = 'Jisajili kwanza ili uweze kushiriki. <a href="/nyg-signup.html">Jisajili hapa</a>. Tayari una akaunti? <a href="/nyg-signin.html">Ingia hapa</a>.';
+      } else if (memberAccess === "checking") {
+        message.textContent = "Tunasubiri kuthibitisha akaunti yako. Tafadhali jaribu tena.";
+      } else {
+        message.textContent = "Imeshindikana kuthibitisha akaunti. Pakia ukurasa upya ujaribu tena.";
+      }
+    }
+
+    function handleTileAttempt(index) {
+      if (memberAccess !== "member") {
+        showParticipationMessage();
+        return;
+      }
+      moveTile(index);
+    }
 
     function makeGoal(stage) {
       return [
@@ -248,7 +267,7 @@
           if (value === " ") tile.classList.add("letter-tile", "blank-letter");
           tile.textContent = value === " " ? " " : value;
           tile.setAttribute("aria-label", value === " " ? "Nafasi ya neno" : value);
-          if (playable) tile.addEventListener("click", function() { moveTile(index); });
+          if (playable) tile.addEventListener("click", function() { handleTileAttempt(index); });
         }
         element.appendChild(tile);
       });
@@ -291,6 +310,10 @@
     }
 
     function startGame() {
+            if (memberAccess !== "member") {
+        showParticipationMessage();
+        return;
+      }
       if (gameStarted || isSaving) return;
       gameStarted = true;
       startedAt = Date.now();
@@ -342,10 +365,12 @@
       return data;
     }
 
-    async function loadStageFromServer() {
+        async function loadStageFromServer() {
+      memberAccess = "checking";
       message.textContent = "Inakagua akaunti na matokeo yako...";
       try {
         const data = await apiGetResults();
+        memberAccess = "member";
         const nextStage = Number(data.next_stage || 1);
         if (nextStage > stages.length) {
           stageBanner.textContent = "UMEMALIZA STAGES ZOTE 20";
@@ -357,10 +382,13 @@
         loadStage(nextStage - 1);
         message.textContent = "Gusa Anza stage au tile yoyote ya kulia ili kuanza kuhesabu muda.";
       } catch (error) {
-        stageBanner.textContent = "Mchezo unahitaji akaunti ya mwanachama";
-        message.textContent = error.message;
-        if (error.message.indexOf("Ingia kwenye akaunti") === 0) {
-          message.innerHTML = 'Ingia kwanza kwenye akaunti ya mwanachama. <a id="login-link" href="/nyg-signin.html">Ingia hapa</a>.';
+        const needsSignup = error.message.indexOf("Ingia kwenye akaunti") === 0;
+        memberAccess = needsSignup ? "guest" : "error";
+        stageBanner.textContent = needsSignup ? "JISAJILI ILI KUSHIRIKI" : "Mchezo haujapakia";
+        if (needsSignup) {
+          showParticipationMessage();
+        } else {
+          message.textContent = error.message;
         }
         startButton.disabled = true;
         shuffleButton.disabled = true;
@@ -449,6 +477,10 @@
 
     startButton.addEventListener("click", startGame);
     shuffleButton.addEventListener("click", function() {
+            if (memberAccess !== "member") {
+        showParticipationMessage();
+        return;
+      }
       clearInterval(clockInterval);
       loadStage(stageIndex);
       message.textContent = "Stage imevurugwa upya. Anza muda unapokuwa tayari.";
