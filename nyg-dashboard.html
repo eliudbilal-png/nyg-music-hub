@@ -116,6 +116,18 @@
         <p id="quizResultsStatus" class="muted">Inapakia matokeo…</p>
         <div id="quizResultsList"></div>
       </section>
+      <section id="puzzleResults" class="quiz-results">
+  <h2>Matokeo ya NYG PURZLE GAME</h2>
+  <p id="puzzleResultsStatus" class="muted">Inapakia matokeo...</p>
+
+  <article class="quiz-card" id="puzzlePreviousWinner" hidden></article>
+
+  <h3>Ubao wa wiki hii</h3>
+  <div id="puzzleLeaderboard"></div>
+
+  <h3>Matokeo yako kwa kila stage</h3>
+  <div id="puzzleMyResults"></div>
+</section>
       <a href="/nyg-market-place.html">Endelea kwenye NYG Friends</a>
     </section>
   </main>
@@ -181,7 +193,111 @@ async function loadQuizResults() {
     status.textContent =
       error.message || 'Imeshindikana kupakia matokeo. Jaribu tena.';
   }
-}    
+} 
+  function formatPuzzleDuration(totalSeconds) {
+  const seconds = Math.max(0, Number(totalSeconds) || 0);
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainder = seconds % 60;
+  const mm = String(minutes).padStart(2, '0');
+  const ss = String(remainder).padStart(2, '0');
+
+  return hours > 0
+    ? String(hours).padStart(2, '0') + ':' + mm + ':' + ss
+    : mm + ':' + ss;
+}
+
+async function loadPuzzleResults() {
+  const status = document.getElementById('puzzleResultsStatus');
+  const leaderboard = document.getElementById('puzzleLeaderboard');
+  const ownResults = document.getElementById('puzzleMyResults');
+  const previousWinner = document.getElementById('puzzlePreviousWinner');
+
+  try {
+    const response = await fetch('/api/puzzle/results', {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { accept: 'application/json' }
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Imeshindikana kupata matokeo ya game.');
+    }
+
+    status.textContent = 'Wiki inaanza ' + data.week_start +
+      '. Mshindi hupangwa kwa stage nyingi zilizokamilika, hatua chache, kisha muda mfupi.';
+    leaderboard.replaceChildren();
+    ownResults.replaceChildren();
+
+    const leaders = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+    if (leaders.length === 0) {
+      leaderboard.textContent = 'Bado hakuna matokeo ya wiki hii.';
+    } else {
+      leaders.slice(0, 10).forEach(player => {
+        const card = document.createElement('article');
+        card.className = 'quiz-card';
+
+        const title = document.createElement('h3');
+        title.textContent = player.rank + '. ' +
+          (player.full_name || 'Mwanachama');
+
+        const detail = document.createElement('p');
+        detail.textContent = 'Stage: ' + player.stages_completed +
+          '/20 | Hatua: ' + player.total_moves +
+          ' | Muda: ' + formatPuzzleDuration(player.total_seconds);
+
+        card.append(title, detail);
+        leaderboard.appendChild(card);
+      });
+    }
+
+    const lastWeek = data.previous_week &&
+      Array.isArray(data.previous_week.leaderboard)
+      ? data.previous_week.leaderboard
+      : [];
+
+    if (lastWeek.length > 0) {
+      previousWinner.hidden = false;
+      previousWinner.replaceChildren();
+
+      const heading = document.createElement('h3');
+      heading.textContent = 'Mshindi wa wiki iliyopita';
+
+      const result = document.createElement('p');
+      result.textContent = lastWeek[0].full_name +
+        ' — stage ' + lastWeek[0].stages_completed +
+        '/20, hatua ' + lastWeek[0].total_moves +
+        ', muda ' + formatPuzzleDuration(lastWeek[0].total_seconds);
+
+      previousWinner.append(heading, result);
+    } else {
+      previousWinner.hidden = true;
+    }
+
+    const mine = Array.isArray(data.my_results) ? data.my_results : [];
+    if (mine.length === 0) {
+      ownResults.textContent = 'Bado hujakamilisha stage yoyote wiki hii.';
+    } else {
+      mine.forEach(item => {
+        const card = document.createElement('article');
+        card.className = 'quiz-card';
+
+        const line = document.createElement('p');
+        line.textContent = 'Stage ' + item.stage_id +
+          ' — muda ' + formatPuzzleDuration(item.elapsed_seconds) +
+          ' | hatua ' + item.moves;
+
+        card.appendChild(line);
+        ownResults.appendChild(card);
+      });
+    }
+  } catch (error) {
+    status.textContent = error.message ||
+      'Imeshindikana kupakia matokeo ya game.';
+  }
+}  
     async function loadMember() {
       const status = document.getElementById('status');
 
@@ -210,6 +326,7 @@ async function loadQuizResults() {
         status.hidden = true;
         document.getElementById('details').hidden = false;
         loadQuizResults();
+        loadPuzzleResults();
       } catch {
         status.textContent =
           'Imeshindikana kuwasiliana na mfumo. Jaribu tena.';
@@ -218,6 +335,7 @@ async function loadQuizResults() {
 
     loadMember();
     setInterval(loadQuizResults, 15000);
+    setInterval(loadPuzzleResults, 15000);
   </script>
 </body>
 </html>
