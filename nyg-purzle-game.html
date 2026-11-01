@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>NYG PURZLE GAME</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 20px 14px 32px;
+      background: #030a16;
+      color: #fff;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+    }
+    main { width: 100%; max-width: 1000px; margin: 0 auto; }
+    h1 { margin: 6px 0 12px; color: #4ca3ff; text-align: center; font-size: clamp(24px, 5vw, 34px); }
+    .intro, .notice { text-align: center; color: #c3cee0; line-height: 1.5; }
+    #stage-banner {
+      width: fit-content;
+      max-width: 100%;
+      margin: 0 auto 12px;
+      padding: 8px 18px;
+      border-radius: 24px;
+      background: linear-gradient(90deg, #ff3385, #9c27b0);
+      font-weight: 700;
+      text-align: center;
+    }
+    #status-container {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px 24px;
+      margin-bottom: 16px;
+      font-weight: 700;
+    }
+    #timer { color: #ff638f; font-variant-numeric: tabular-nums; }
+    #moves { color: #70bfff; }
+    .boards { display: flex; align-items: flex-start; justify-content: center; gap: 18px; }
+    .board-panel {
+      flex: 1 1 0;
+      min-width: 0;
+      padding: 12px;
+      background: #08142c;
+      border: 2px solid #1a3a70;
+      border-radius: 12px;
+      box-shadow: 0 0 20px #0008;
+    }
+    .board-panel h2 { margin: 0 0 10px; color: #cbd7ed; font-size: 16px; text-align: center; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 4px;
+      width: 100%;
+      aspect-ratio: 1;
+    }
+    .tile {
+      min-width: 0;
+      padding: 0;
+      border: 1px solid #304060;
+      border-radius: 7px;
+      background: #122244;
+      color: #9eb0cf;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font: 700 clamp(10px, 2.6vw, 22px)/1 Arial, sans-serif;
+      user-select: none;
+    }
+    button.tile { cursor: pointer; }
+    button.tile:active { transform: scale(.94); }
+    button.tile:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+    .letter-tile {
+      border-color: #ff3385;
+      background: linear-gradient(135deg, #321645, #1d0b2b);
+      color: #ff70aa;
+      text-shadow: 0 0 10px #ff3385;
+      box-shadow: inset 0 0 8px #ff338555;
+    }
+    .blank-letter { color: transparent; }
+    .free-tile {
+      border: 1px dashed #71809a;
+      background: #0a1830;
+      color: #91a0b8;
+      font-size: clamp(7px, 1.7vw, 11px);
+      font-style: italic;
+    }
+    .reference-grid .tile { cursor: default; }
+    .controls { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    button.action {
+      min-height: 44px;
+      padding: 10px 18px;
+      border: 0;
+      border-radius: 8px;
+      background: #ff3385;
+      color: white;
+      font: 700 15px Arial, sans-serif;
+      cursor: pointer;
+    }
+    button.action.secondary { background: #1a3a70; }
+    button.action:disabled { opacity: .55; cursor: not-allowed; }
+    #game-message { min-height: 28px; margin: 14px 0 0; color: #dce6f7; text-align: center; line-height: 1.5; }
+    #login-link, #dashboard-link { color: #70bfff; }
+    .back-link { display: block; width: fit-content; margin: 18px auto 0; color: #70bfff; }
+    @media (max-width: 680px) {
+      body { padding: 14px 10px 26px; }
+      .boards { flex-direction: column; align-items: center; }
+      .board-panel { width: min(100%, 430px); flex: none; }
+      .board-panel h2 { font-size: 15px; }
+      .grid { gap: 3px; }
+      .tile { border-radius: 5px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>NYG PURZLE GAME</h1>
+    <p class="intro">Telezesha cube iliyo jirani na FREE. Muda hauna kikomo; mfumo huhifadhi muda na hatua zako ukimaliza stage.</p>
+    <div id="stage-banner">Inapakia mchezo...</div>
+    <div id="status-container">
+      <div>Muda: <span id="timer">00:00</span></div>
+      <div>Hatua: <span id="moves">0</span></div>
+    </div>
+
+    <div class="boards">
+      <section class="board-panel" aria-label="Mfano wa mpangilio sahihi">
+        <h2>Mpangilio sahihi</h2>
+        <div class="grid reference-grid" id="reference-grid"></div>
+      </section>
+      <section class="board-panel" aria-label="Panga cubes hapa">
+        <h2>Gusa hapa uanze kupanga</h2>
+        <div class="grid" id="game-grid"></div>
+      </section>
+    </div>
+
+    <div class="controls">
+      <button class="action" id="start-button" type="button">Anza stage</button>
+      <button class="action secondary" id="shuffle-button" type="button">Vuruga upya</button>
+      <button class="action secondary" id="continue-button" type="button" hidden>Endelea stage inayofuata</button>
+      <button class="action secondary" id="retry-save-button" type="button" hidden>Jaribu kuhifadhi tena</button>
+    </div>
+    <p id="game-message" role="status" aria-live="polite"></p>
+    <a id="dashboard-link" class="back-link" href="/nyg-dashboard.html">Angalia matokeo kwenye dashboard</a>
+    <a class="back-link" href="/nyg-games.html">Rudi kwenye Games</a>
+  </main>
+
+  <script>
+    const stages = [
+      { name: "NYG CENTER", word1: "NYG", word2: "CENTER" },
+      { name: "SEMA NENO", word1: "SEMA", word2: "NENO" },
+      { name: "YESU NI NURU", word1: "YESU", word2: "NURU" },
+      { name: "ROHO WA MUNGU", word1: "ROHO", word2: "MUNGU" },
+      { name: "SIFUNI BWANA", word1: "SIFUNI", word2: "BWANA" },
+      { name: "UPENDO WA KWELI", word1: "UPENDO", word2: "KWELI" },
+      { name: "IMANI KUU", word1: "IMANI", word2: "KUU" },
+      { name: "NEEMA TELE", word1: "NEEMA", word2: "TELE" },
+      { name: "AMANI MOYONI", word1: "AMANI", word2: "MOYONI" },
+      { name: "SALA YA BABA", word1: "SALA", word2: "BABA" },
+      { name: "IBADA SAFI", word1: "IBADA", word2: "SAFI" },
+      { name: "DAMU YA AGANO", word1: "DAMU", word2: "AGANO" },
+      { name: "UTUKUFU JUU", word1: "JUU", word2: "SIFA" },
+      { name: "NABII ISAYA", word1: "NABII", word2: "ISAYA" },
+      { name: "WOKOVU WA MILELE", word1: "WOKOVU", word2: "MILELE" },
+      { name: "MKATE WA UZIMA", word1: "MKATE", word2: "UZIMA" },
+      { name: "ZABURI YA DAUDI", word1: "ZABURI", word2: "DAUDI" },
+      { name: "JINA LA YESU", word1: "JINA", word2: "YESU" },
+      { name: "SHUKRANI TELE", word1: "ASANTE", word2: "TELE" },
+      { name: "ALFA NA OMEGA", word1: "ALFA", word2: "OMEGA" }
+    ];
+
+    const referenceGrid = document.getElementById("reference-grid");
+    const gameGrid = document.getElementById("game-grid");
+    const stageBanner = document.getElementById("stage-banner");
+    const timerLabel = document.getElementById("timer");
+    const movesLabel = document.getElementById("moves");
+    const message = document.getElementById("game-message");
+    const startButton = document.getElementById("start-button");
+    const shuffleButton = document.getElementById("shuffle-button");
+    const continueButton = document.getElementById("continue-button");
+    const retrySaveButton = document.getElementById("retry-save-button");
+
+    let stageIndex = 0;
+    let goalState = [];
+    let boardState = [];
+    let moves = 0;
+    let startedAt = 0;
+    let elapsedSeconds = 0;
+    let clockInterval = null;
+    let gameStarted = false;
+    let isSaving = false;
+    let pendingResult = null;
+
+    function makeGoal(stage) {
+      return [
+        "1", "2", "3", "4", "5", "6",
+        "7", "8", "9", "10", "11", "12",
+        ...stage.word1.padEnd(6, " ").split(""),
+        ...stage.word2.padEnd(6, " ").split(""),
+        "25", "26", "27", "28", "29", "30",
+        "31", "32", "33", "FREE", "FREE", "FREE"
+      ];
+    }
+
+    function drawGrid(element, state, playable) {
+      element.replaceChildren();
+      state.forEach(function(value, index) {
+        const tile = playable ? document.createElement("button") : document.createElement("div");
+        if (playable) tile.type = "button";
+        tile.className = "tile";
+        if (value === "FREE") {
+          tile.classList.add("free-tile");
+          tile.textContent = "FREE";
+          tile.setAttribute("aria-label", "Nafasi ya wazi");
+        } else {
+          if (/^[A-Z]$/.test(value)) tile.classList.add("letter-tile");
+          if (value === " ") tile.classList.add("letter-tile", "blank-letter");
+          tile.textContent = value === " " ? " " : value;
+          tile.setAttribute("aria-label", value === " " ? "Nafasi ya neno" : value);
+          if (playable) tile.addEventListener("click", function() { moveTile(index); });
+        }
+        element.appendChild(tile);
+      });
+    }
+
+    function scramble() {
+      boardState = goalState.slice();
+      for (let i = 0; i < 150; i++) {
+        const freeCells = [];
+        boardState.forEach(function(value, index) { if (value === "FREE") freeCells.push(index); });
+        const freeIndex = freeCells[Math.floor(Math.random() * freeCells.length)];
+        const row = Math.floor(freeIndex / 6);
+        const col = freeIndex % 6;
+        const neighbors = [];
+        if (row > 0) neighbors.push(freeIndex - 6);
+        if (row < 5) neighbors.push(freeIndex + 6);
+        if (col > 0) neighbors.push(freeIndex - 1);
+        if (col < 5) neighbors.push(freeIndex + 1);
+        const movable = neighbors.filter(function(index) { return boardState[index] !== "FREE"; });
+        const tileIndex = movable[Math.floor(Math.random() * movable.length)];
+        boardState[freeIndex] = boardState[tileIndex];
+        boardState[tileIndex] = "FREE";
+      }
+    }
+
+    function formatTime(totalSeconds) {
+      const seconds = Math.max(0, Math.floor(totalSeconds));
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const remainder = seconds % 60;
+      const mm = String(minutes).padStart(2, "0");
+      const ss = String(remainder).padStart(2, "0");
+      return hours > 0 ? String(hours).padStart(2, "0") + ":" + mm + ":" + ss : mm + ":" + ss;
+    }
+
+    function updateClock() {
+      if (!gameStarted) return;
+      elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+      timerLabel.textContent = formatTime(elapsedSeconds);
+    }
+
+    function startGame() {
+      if (gameStarted || isSaving) return;
+      gameStarted = true;
+      startedAt = Date.now();
+      startButton.disabled = true;
+      message.textContent = "Muda inaanza kuhesabiwa. Panga tiles kwa usahihi.";
+      clockInterval = setInterval(updateClock, 250);
+    }
+
+    function neighborsOf(index) {
+      const row = Math.floor(index / 6);
+      const col = index % 6;
+      const result = [];
+      if (row > 0) result.push(index - 6);
+      if (row < 5) result.push(index + 6);
+      if (col > 0) result.push(index - 1);
+      if (col < 5) result.push(index + 1);
+      return result;
+    }
+
+    function moveTile(index) {
+      if (isSaving) return;
+      if (!gameStarted) startGame();
+      const freeIndex = neighborsOf(index).find(function(next) { return boardState[next] === "FREE"; });
+      if (freeIndex === undefined) return;
+      boardState[freeIndex] = boardState[index];
+      boardState[index] = "FREE";
+      moves++;
+      movesLabel.textContent = String(moves);
+      drawGrid(gameGrid, boardState, true);
+      if (boardState.every(function(value, i) { return value === goalState[i]; })) finishStage();
+    }
+
+    async function apiGetResults() {
+      const response = await fetch("/api/puzzle/results", {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { accept: "application/json" }
+      });
+      const data = await response.json().catch(function() { return {}; });
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Ingia kwenye akaunti ya mwanachama ili matokeo yahifadhiwe. ");
+        }
+        throw new Error(data.error || "Imeshindikana kufungua mchezo.");
+      }
+      return data;
+    }
+
+    async function loadStageFromServer() {
+      message.textContent = "Inakagua akaunti na matokeo yako...";
+      try {
+        const data = await apiGetResults();
+        const nextStage = Number(data.next_stage || 1);
+        if (nextStage > stages.length) {
+          stageBanner.textContent = "UMEMALIZA STAGES ZOTE 20";
+          message.textContent = "Hongera! Matokeo yako yamehifadhiwa. Angalia nafasi yako kwenye dashboard.";
+          startButton.hidden = true;
+          shuffleButton.hidden = true;
+          return;
+        }
+        loadStage(nextStage - 1);
+        message.textContent = "Gusa Anza stage au tile yoyote ya kulia ili kuanza kuhesabu muda.";
+      } catch (error) {
+        stageBanner.textContent = "Mchezo unahitaji akaunti ya mwanachama";
+        message.textContent = error.message;
+        if (error.message.indexOf("Ingia kwenye akaunti") === 0) {
+          message.innerHTML = 'Ingia kwanza kwenye akaunti ya mwanachama. <a id="login-link" href="/nyg-signin.html">Ingia hapa</a>.';
+        }
+        startButton.disabled = true;
+        shuffleButton.disabled = true;
+      }
+    }
+
+    function loadStage(index) {
+      stageIndex = index;
+      goalState = makeGoal(stages[stageIndex]);
+      scramble();
+      moves = 0;
+      elapsedSeconds = 0;
+      startedAt = 0;
+      gameStarted = false;
+      isSaving = false;
+      pendingResult = null;
+      clearInterval(clockInterval);
+      stageBanner.textContent = "STAGE " + (stageIndex + 1) + " / 20: " + stages[stageIndex].name;
+      timerLabel.textContent = "00:00";
+      movesLabel.textContent = "0";
+      startButton.hidden = false;
+      startButton.disabled = false;
+      shuffleButton.hidden = false;
+      shuffleButton.disabled = false;
+      continueButton.hidden = true;
+      retrySaveButton.hidden = true;
+      drawGrid(referenceGrid, goalState, false);
+      drawGrid(gameGrid, boardState, true);
+    }
+
+    async function saveStageResult() {
+      if (!pendingResult || isSaving) return;
+      isSaving = true;
+      retrySaveButton.hidden = true;
+      continueButton.hidden = true;
+      message.textContent = "Stage imekamilika. Inahifadhi muda na hatua zako...";
+      try {
+        const response = await fetch("/api/puzzle/complete", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "content-type": "application/json", accept: "application/json" },
+          body: JSON.stringify(pendingResult)
+        });
+        const result = await response.json().catch(function() { return {}; });
+        if (!response.ok) throw new Error(result.error || "Matokeo hayajahifadhiwa.");
+        stageSaved();
+      } catch (error) {
+        try {
+          const data = await apiGetResults();
+          const saved = (data.my_results || []).some(function(item) { return Number(item.stage_id) === pendingResult.stage_id; });
+          if (saved) return stageSaved();
+        } catch (_) {}
+        isSaving = false;
+        message.textContent = (error.message || "Imeshindikana kuhifadhi.") + " Bonyeza ‘Jaribu kuhifadhi tena’.";
+        retrySaveButton.hidden = false;
+      }
+    }
+
+    function stageSaved() {
+      isSaving = false;
+      pendingResult = null;
+      message.textContent = "Stage " + (stageIndex + 1) + " imehifadhiwa: muda " + formatTime(elapsedSeconds) + ", hatua " + moves + ".";
+      if (stageIndex < stages.length - 1) {
+        continueButton.hidden = false;
+      } else {
+        stageBanner.textContent = "UMEMALIZA STAGES ZOTE 20";
+        message.textContent += " Hongera! Angalia matokeo yako kwenye dashboard.";
+        startButton.hidden = true;
+        shuffleButton.hidden = true;
+      }
+    }
+
+    function finishStage() {
+      clearInterval(clockInterval);
+      updateClock();
+      gameStarted = false;
+      startButton.disabled = true;
+      shuffleButton.disabled = true;
+      pendingResult = {
+        stage_id: stageIndex + 1,
+        elapsed_seconds: elapsedSeconds,
+        moves: moves
+      };
+      saveStageResult();
+    }
+
+    startButton.addEventListener("click", startGame);
+    shuffleButton.addEventListener("click", function() {
+      clearInterval(clockInterval);
+      loadStage(stageIndex);
+      message.textContent = "Stage imevurugwa upya. Anza muda unapokuwa tayari.";
+    });
+    continueButton.addEventListener("click", function() { loadStage(stageIndex + 1); });
+    retrySaveButton.addEventListener("click", saveStageResult);
+    loadStageFromServer();
+  </script>
+</body>
+</html>
