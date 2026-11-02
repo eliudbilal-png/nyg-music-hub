@@ -227,9 +227,18 @@ async function loadPuzzleResults() {
     }
 
     const competition = data.competition || {};
-    status.textContent = 'Mashindano yanaanza ' + (competition.start_date || data.week_start) +
-      ', hudumu siku ' + (competition.duration_days || 7) +
-      ', na yanaisha ' + (competition.end_date || '') +
+    const startDate = competition.start_date || data.week_start;
+    const startTime = competition.start_time || '00:00';
+    const endDate = competition.end_date || '';
+    const announcementTime = competition.announcement_time || '23:59';
+    const scheduleStatus = competition.results_announced
+      ? 'Mashindano yamefungwa; matokeo ya mwisho yametangazwa.'
+      : competition.has_started
+        ? 'Mashindano yanaendelea.'
+        : 'Mashindano bado hayajaanza.';
+    status.textContent = scheduleStatus + ' Yataanza ' + startDate + ' saa ' + startTime +
+      ', yatadumu siku ' + (competition.duration_days || 7) +
+      ', na matokeo ya mwisho yatatangazwa ' + endDate + ' saa ' + announcementTime +
       '. Nafasi hupangwa kwa stage nyingi kwanza, kisha muda mfupi.';
     leaderboard.replaceChildren();
     ownResults.replaceChildren();
