@@ -167,6 +167,29 @@
 <div id="eventsList"></div>
     <hr>
 
+    <h3>NYG PURZLE GAME — MASHINDANO</h3>
+    <p>Chagua muda wa mashindano na zawadi za washindi watatu.</p>
+
+    <form id="puzzleSettingsForm">
+      <label for="puzzleDuration">MASHINDANO YAWE SIKU NGAPI?</label>
+      <input id="puzzleDuration" type="number" min="1" max="90" step="1" required>
+
+      <label for="puzzlePrize1">ZAWADI YA NAFASI YA 1</label>
+      <input id="puzzlePrize1" type="text" maxlength="200" placeholder="Andika zawadi ya mshindi wa kwanza">
+
+      <label for="puzzlePrize2">ZAWADI YA NAFASI YA 2</label>
+      <input id="puzzlePrize2" type="text" maxlength="200" placeholder="Andika zawadi ya mshindi wa pili">
+
+      <label for="puzzlePrize3">ZAWADI YA NAFASI YA 3</label>
+      <input id="puzzlePrize3" type="text" maxlength="200" placeholder="Andika zawadi ya mshindi wa tatu">
+
+      <p>Washindi hupangwa kwa stage nyingi kwanza, kisha muda mfupi. Kuhifadhi mipangilio huanzisha mashindano mapya leo.</p>
+      <button id="savePuzzleSettingsButton" type="submit">HIFADHI NA ANZISHA MASHINDANO</button>
+      <p id="puzzleSettingsMessage" role="status"></p>
+    </form>
+
+    <hr>
+
     <h3>FURSA ZA KAZI</h3>
     <p>Matangazo ya kazi na maombi ya waombaji.</p>
 
@@ -216,7 +239,59 @@
     dashboard.hidden = !authenticated;
     code.value = '';
     message.textContent = '';
+    if (authenticated) loadPuzzleSettings();
   }
+
+  async function loadPuzzleSettings() {
+    const status = document.getElementById('puzzleSettingsMessage');
+    try {
+      const response = await fetch('/api/puzzle/admin/settings', {
+        credentials: 'same-origin',
+        cache: 'no-store'
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Imeshindikana kufungua mipangilio.');
+      document.getElementById('puzzleDuration').value = data.duration_days || 7;
+      document.getElementById('puzzlePrize1').value = data.prizes?.[0] || '';
+      document.getElementById('puzzlePrize2').value = data.prizes?.[1] || '';
+      document.getElementById('puzzlePrize3').value = data.prizes?.[2] || '';
+      status.textContent = 'Mashindano ya sasa: ' + data.start_date + ' hadi ' + data.end_date + '.';
+    } catch (error) {
+      status.textContent = error.message || 'Imeshindikana kufungua mipangilio.';
+    }
+  }
+
+  document.getElementById('puzzleSettingsForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const status = document.getElementById('puzzleSettingsMessage');
+    const button = document.getElementById('savePuzzleSettingsButton');
+    if (!window.confirm('Kuhifadhi mipangilio kutaanzisha mashindano mapya leo. Uendelee?')) return;
+    button.disabled = true;
+    status.textContent = 'Inahifadhi mipangilio...';
+    try {
+      const response = await fetch('/api/puzzle/admin/settings', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({
+          duration_days: Number(document.getElementById('puzzleDuration').value),
+          prizes: [
+            document.getElementById('puzzlePrize1').value.trim(),
+            document.getElementById('puzzlePrize2').value.trim(),
+            document.getElementById('puzzlePrize3').value.trim()
+          ]
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.saved !== true) throw new Error(data.error || 'Imeshindikana kuhifadhi mipangilio.');
+      status.textContent = 'Mashindano mapya yameanza ' + data.start_date +
+        ', yatadumu siku ' + data.duration_days + ' na yataisha ' + data.end_date + '.';
+    } catch (error) {
+      status.textContent = error.message || 'Imeshindikana kuhifadhi mipangilio.';
+    } finally {
+      button.disabled = false;
+    }
+  });
 
   async function checkSession() {
     try {
