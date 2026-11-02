@@ -464,6 +464,10 @@ function puzzleDateInTanzania(timestamp = Date.now()) {
   return new Date(timestamp + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+function puzzleTimeInTanzania(timestamp = Date.now()) {
+  return new Date(timestamp + 3 * 60 * 60 * 1000).toISOString().slice(11, 16);
+}
+
 function addPuzzleDays(dateText, days) {
   const date = new Date(dateText + 'T00:00:00.000Z');
   date.setUTCDate(date.getUTCDate() + days);
@@ -487,6 +491,18 @@ async function ensurePuzzleCompetitionSettings(env) {
       (id, duration_days, prize_1, prize_2, prize_3, competition_start)
     VALUES (1, 7, '', '', '', ?)
   `).bind(puzzleWeekStart()).run();
+
+  await env.QUIZ_DB.prepare(`
+    CREATE TABLE IF NOT EXISTS nyg_puzzle_competition_schedule (
+      id INTEGER PRIMARY KEY CHECK(id = 1),
+      start_time TEXT NOT NULL DEFAULT '00:00',
+      announcement_time TEXT NOT NULL DEFAULT '23:59'
+    )
+  `).run();
+  await env.QUIZ_DB.prepare(`
+    INSERT OR IGNORE INTO nyg_puzzle_competition_schedule
+      (id, start_time, announcement_time) VALUES (1, '00:00', '23:59')
+  `).run();
 }
 
 async function getPuzzleCompetition(env, timestamp = Date.now()) {
@@ -495,15 +511,22 @@ async function getPuzzleCompetition(env, timestamp = Date.now()) {
     SELECT duration_days, prize_1, prize_2, prize_3, competition_start
     FROM nyg_puzzle_competition_settings WHERE id = 1
   `).first();
+  const schedule = await env.QUIZ_DB.prepare(`
+    SELECT start_time, announcement_time
+    FROM nyg_puzzle_competition_schedule WHERE id = 1
+  `).first();
 
   const durationDays = Math.max(1, Math.min(90, Number(settings?.duration_days) || 7));
   const configuredStart = settings?.competition_start || puzzleWeekStart(timestamp);
-  const configuredStartMs = Date.parse(configuredStart + 'T00:00:00+03:00');
+  const startTime = schedule?.start_time || '00:00';
+  const announcementTime = schedule?.announcement_time || '23:59';
+  const configuredStartMs = Date.parse(configuredStart + 'T' + startTime + ':00+03:00');
   const durationMs = durationDays * 24 * 60 * 60 * 1000;
   const cycle = Math.max(0, Math.floor((timestamp - configuredStartMs) / durationMs));
   const startMs = configuredStartMs + cycle * durationMs;
   const startDate = puzzleDateInTanzania(startMs);
-  const endMs = startMs + durationMs;
+  const endDate = addPuzzleDays(startDate, durationDays - 1);
+  const endMs = Date.parse(endDate + 'T' + announcementTime + ':00+03:00');
 
   if (startDate !== configuredStart) {
     await env.QUIZ_DB.prepare(`
@@ -513,10 +536,14 @@ async function getPuzzleCompetition(env, timestamp = Date.now()) {
 
   return {
     start_date: startDate,
-    end_date: puzzleDateInTanzania(endMs - 1),
+    start_time: startTime,
+    end_date: endDate,
+    announcement_time: announcementTime,
     ends_at: new Date(endMs).toISOString(),
     duration_days: durationDays,
-    is_open: timestamp < endMs,
+    has_started: timestamp >= startMs,
+    is_open: timestamp >= startMs && timestamp < endMs,
+    results_announced: timestamp >= endMs,
     prizes: [settings?.prize_1 || '', settings?.prize_2 || '', settings?.prize_3 || '']
   };
 }
@@ -845,7 +872,9 @@ if (row.member_id) {
         duration_days: competition.duration_days,
         prizes: competition.prizes,
         start_date: competition.start_date,
+        start_time: competition.start_time,
         end_date: competition.end_date,
+        announcement_time: competition.announcement_time,
         ends_at: competition.ends_at
       });
     }
@@ -856,14 +885,21 @@ if (row.member_id) {
     const data = await request.json();
     const durationDays = Number(data.duration_days);
     const prizes = Array.isArray(data.prizes) ? data.prizes : [];
+    const startDate = String(data.start_date || '').trim();
+    const startTime = String(data.start_time || '').trim();
+    const announcementTime = String(data.announcement_time || '').trim();
     if (!Number.isSafeInteger(durationDays) || durationDays < 1 || durationDays > 90) {
       return reply({ error: 'Weka muda kati ya siku 1 na 90.' }, 400);
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) ||
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime) ||
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(announcementTime)) {
+      return reply({ error: 'Weka tarehe na saa sahihi ya kuanza na kutangaza matokeo.' }, 400);
     }
     if (prizes.length !== 3 || prizes.some(value => String(value || '').length > 200)) {
       return reply({ error: 'Weka zawadi za nafasi zote tatu; kila moja isiwe zaidi ya herufi 200.' }, 400);
     }
 
-    const today = puzzleDateInTanzania();
     await env.QUIZ_DB.prepare(`
       UPDATE nyg_puzzle_competition_settings
       SET duration_days = ?, prize_1 = ?, prize_2 = ?, prize_3 = ?, competition_start = ?
@@ -873,8 +909,12 @@ if (row.member_id) {
       String(prizes[0] || '').trim(),
       String(prizes[1] || '').trim(),
       String(prizes[2] || '').trim(),
-      today
+      startDate
     ).run();
+    await env.QUIZ_DB.prepare(`
+      UPDATE nyg_puzzle_competition_schedule
+      SET start_time = ?, announcement_time = ? WHERE id = 1
+    `).bind(startTime, announcementTime).run();
 
     const competition = await getPuzzleCompetition(env);
     return reply({
@@ -882,7 +922,9 @@ if (row.member_id) {
       duration_days: competition.duration_days,
       prizes: competition.prizes,
       start_date: competition.start_date,
+      start_time: competition.start_time,
       end_date: competition.end_date,
+      announcement_time: competition.announcement_time,
       ends_at: competition.ends_at
     });
   } catch (error) {
