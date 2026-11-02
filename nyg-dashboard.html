@@ -226,8 +226,11 @@ async function loadPuzzleResults() {
       throw new Error(data.error || 'Imeshindikana kupata matokeo ya game.');
     }
 
-    status.textContent = 'Wiki inaanza ' + data.week_start +
-      '. Mshindi hupangwa kwa stage nyingi zilizokamilika, hatua chache, kisha muda mfupi.';
+    const competition = data.competition || {};
+    status.textContent = 'Mashindano yanaanza ' + (competition.start_date || data.week_start) +
+      ', hudumu siku ' + (competition.duration_days || 7) +
+      ', na yanaisha ' + (competition.end_date || '') +
+      '. Nafasi hupangwa kwa stage nyingi kwanza, kisha muda mfupi.';
     leaderboard.replaceChildren();
     ownResults.replaceChildren();
 
@@ -249,6 +252,14 @@ async function loadPuzzleResults() {
           ' | Muda: ' + formatPuzzleDuration(player.total_seconds);
 
         card.append(title, detail);
+        if (Number(player.rank) <= 3) {
+          const prize = document.createElement('p');
+          const prizeText = Array.isArray(competition.prizes)
+            ? competition.prizes[Number(player.rank) - 1]
+            : '';
+          prize.textContent = 'Zawadi: ' + (prizeText || 'Bado haijawekwa');
+          card.appendChild(prize);
+        }
         leaderboard.appendChild(card);
       });
     }
@@ -335,7 +346,8 @@ async function loadPuzzleResults() {
 
     loadMember();
     setInterval(loadQuizResults, 15000);
-    setInterval(loadPuzzleResults, 15000);
+    setInterval(loadPuzzleResults, 5000);
+    window.addEventListener('focus', loadPuzzleResults);
   </script>
 </body>
 </html>
