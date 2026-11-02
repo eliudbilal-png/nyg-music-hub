@@ -171,8 +171,17 @@
     <p>Chagua muda wa mashindano na zawadi za washindi watatu.</p>
 
     <form id="puzzleSettingsForm">
+      <label for="puzzleStartDate">TAREHE YA KUANZA MASHINDANO</label>
+      <input id="puzzleStartDate" type="date" required>
+
+      <label for="puzzleStartTime">MUDA WA KUANZA MASHINDANO</label>
+      <input id="puzzleStartTime" type="time" required>
+
       <label for="puzzleDuration">MASHINDANO YAWE SIKU NGAPI?</label>
       <input id="puzzleDuration" type="number" min="1" max="90" step="1" required>
+
+      <label for="puzzleAnnouncementTime">MUDA WA KUTANGAZA MATOKEO MWISHONI</label>
+      <input id="puzzleAnnouncementTime" type="time" required>
 
       <label for="puzzlePrize1">ZAWADI YA NAFASI YA 1</label>
       <input id="puzzlePrize1" type="text" maxlength="200" placeholder="Andika zawadi ya mshindi wa kwanza">
@@ -183,7 +192,7 @@
       <label for="puzzlePrize3">ZAWADI YA NAFASI YA 3</label>
       <input id="puzzlePrize3" type="text" maxlength="200" placeholder="Andika zawadi ya mshindi wa tatu">
 
-      <p>Washindi hupangwa kwa stage nyingi kwanza, kisha muda mfupi. Kuhifadhi mipangilio huanzisha mashindano mapya leo.</p>
+      <p>Washindi hupangwa kwa stage nyingi kwanza, kisha muda mfupi. Matokeo ya mwisho hutangazwa muda ulioweka siku ya mwisho.</p>
       <button id="savePuzzleSettingsButton" type="submit">HIFADHI NA ANZISHA MASHINDANO</button>
       <p id="puzzleSettingsMessage" role="status"></p>
     </form>
@@ -251,11 +260,15 @@
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Imeshindikana kufungua mipangilio.');
+      document.getElementById('puzzleStartDate').value = data.start_date || '';
+      document.getElementById('puzzleStartTime').value = data.start_time || '00:00';
       document.getElementById('puzzleDuration').value = data.duration_days || 7;
+      document.getElementById('puzzleAnnouncementTime').value = data.announcement_time || '23:59';
       document.getElementById('puzzlePrize1').value = data.prizes?.[0] || '';
       document.getElementById('puzzlePrize2').value = data.prizes?.[1] || '';
       document.getElementById('puzzlePrize3').value = data.prizes?.[2] || '';
-      status.textContent = 'Mashindano ya sasa: ' + data.start_date + ' hadi ' + data.end_date + '.';
+      status.textContent = 'Mashindano: ' + data.start_date + ' saa ' + data.start_time +
+        ' hadi ' + data.end_date + ' saa ' + data.announcement_time + ' (matokeo yatatangazwa).';
     } catch (error) {
       status.textContent = error.message || 'Imeshindikana kufungua mipangilio.';
     }
@@ -265,7 +278,10 @@
     event.preventDefault();
     const status = document.getElementById('puzzleSettingsMessage');
     const button = document.getElementById('savePuzzleSettingsButton');
-    if (!window.confirm('Kuhifadhi mipangilio kutaanzisha mashindano mapya leo. Uendelee?')) return;
+    const startDate = document.getElementById('puzzleStartDate').value;
+    const startTime = document.getElementById('puzzleStartTime').value;
+    const announcementTime = document.getElementById('puzzleAnnouncementTime').value;
+    if (!window.confirm('Hifadhi ratiba hii ya mashindano na zawadi?')) return;
     button.disabled = true;
     status.textContent = 'Inahifadhi mipangilio...';
     try {
@@ -274,7 +290,10 @@
         credentials: 'same-origin',
         headers: { 'content-type': 'application/json', accept: 'application/json' },
         body: JSON.stringify({
+          start_date: startDate,
+          start_time: startTime,
           duration_days: Number(document.getElementById('puzzleDuration').value),
+          announcement_time: announcementTime,
           prizes: [
             document.getElementById('puzzlePrize1').value.trim(),
             document.getElementById('puzzlePrize2').value.trim(),
@@ -284,8 +303,9 @@
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.saved !== true) throw new Error(data.error || 'Imeshindikana kuhifadhi mipangilio.');
-      status.textContent = 'Mashindano mapya yameanza ' + data.start_date +
-        ', yatadumu siku ' + data.duration_days + ' na yataisha ' + data.end_date + '.';
+      status.textContent = 'Ratiba imehifadhiwa. Mashindano yataanza ' + data.start_date +
+        ' saa ' + data.start_time + ', yatadumu siku ' + data.duration_days +
+        ', na matokeo yatatangazwa ' + data.end_date + ' saa ' + data.announcement_time + '.';
     } catch (error) {
       status.textContent = error.message || 'Imeshindikana kuhifadhi mipangilio.';
     } finally {
