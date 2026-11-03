@@ -121,8 +121,9 @@ async function updateMatchClock(db, initialRow) {
   if (row.status === 'open' && row.opponent_type === 'computer' && row.turn_player_id === row.player2_id && now-Number(row.updated_at||0)>=1900) {
     const point = computerThrow(), dart = {id:crypto.randomUUID(),created_at:now,...point,...scoreThrow(point.x,point.y)};
     const throws = JSON.parse(row.player2_throws||'[]'); throws.push(dart);
-    await db.prepare("UPDATE nyg_darts_matches SET player2_points=player2_points+?,player2_throws=?,updated_at=? WHERE id=? AND status='open' AND turn_player_id=?")
-      .bind(dart.points,JSON.stringify(throws),now,row.id,row.player2_id).run();
+    // updated_at is the claim token: only the poll that read this exact row can add this dart.
+    await db.prepare("UPDATE nyg_darts_matches SET player2_points=player2_points+?,player2_throws=?,updated_at=? WHERE id=? AND status='open' AND turn_player_id=? AND updated_at=?")
+      .bind(dart.points,JSON.stringify(throws),now,row.id,row.player2_id,row.updated_at).run();
     row = await db.prepare("SELECT * FROM nyg_darts_matches WHERE id=?").bind(row.id).first();
   }
   return row;
@@ -194,8 +195,10 @@ export async function handleDartsApi(request,env,url,path,method,tools) {
       if(current.status!=='open')return tools.reply({error:'Muda wa mechi umeisha.'},409);
       if(current.turn_player_id!==member.id)return tools.reply({error:'Zamu yako imeisha au subiri zamu yako.'},409);
       const now=Date.now(),dart={id:crypto.randomUUID(),created_at:now,x,y,...scoreThrow(x,y)};
-      if(member.id===current.player1_id){const throws=JSON.parse(current.player1_throws||'[]');throws.push(dart);await db.prepare("UPDATE nyg_darts_matches SET player1_points=player1_points+?,player1_throws=?,updated_at=? WHERE id=? AND status='open' AND turn_player_id=? AND round_deadline>?").bind(dart.points,JSON.stringify(throws),now,current.id,member.id,now).run();}
-      else{const throws=JSON.parse(current.player2_throws||'[]');throws.push(dart);await db.prepare("UPDATE nyg_darts_matches SET player2_points=player2_points+?,player2_throws=?,updated_at=? WHERE id=? AND status='open' AND turn_player_id=? AND round_deadline>?").bind(dart.points,JSON.stringify(throws),now,current.id,member.id,now).run();}
+      let savedThrow;
+      if(member.id===current.player1_id){const throws=JSON.parse(current.player1_throws||'[]');throws.push(dart);savedThrow=await db.prepare("UPDATE nyg_darts_matches SET player1_points=player1_points+?,player1_throws=?,updated_at=? WHERE id=? AND status='open' AND turn_player_id=? AND round_deadline>? AND updated_at=?").bind(dart.points,JSON.stringify(throws),now,current.id,member.id,now,current.updated_at).run();}
+      else{const throws=JSON.parse(current.player2_throws||'[]');throws.push(dart);savedThrow=await db.prepare("UPDATE nyg_darts_matches SET player2_points=player2_points+?,player2_throws=?,updated_at=? WHERE id=? AND status='open' AND turn_player_id=? AND round_deadline>? AND updated_at=?").bind(dart.points,JSON.stringify(throws),now,current.id,member.id,now,current.updated_at).run();}
+      if(Number(savedThrow.meta?.changes||0)!==1)return tools.reply({error:'Ombi jingine la dart limefika kwa wakati mmoja. Jaribu kurusha tena.'},409);
       const saved=await db.prepare("SELECT * FROM nyg_darts_matches WHERE id=?").bind(current.id).first();
       return tools.reply({dart,match:matchView(saved,member.id)});
     }catch{return tools.reply({error:'Mshale haukuweza kuhifadhiwa. Jaribu tena.'},500);}
