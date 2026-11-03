@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0b1423">
+<title>NYG Darts | NYG Music Hub</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0b1423;color:#f5f7fb;font-family:Arial,sans-serif;padding:16px 12px 28px}
+main{max-width:920px;margin:auto}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 auto 12px}
+.brand{font-size:13px;letter-spacing:2px;color:#9cb1d0;font-weight:700}
+.round{padding:9px 13px;background:#161d2d;border:1px solid #303b50;border-radius:24px;font-weight:700}
+.title{text-align:center;margin:6px 0 4px;font-size:clamp(25px,6vw,38px)}
+.subtitle{text-align:center;color:#abb6c9;margin:0 auto 16px;line-height:1.45}
+.scores{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 auto 12px;max-width:650px}
+.score-card{padding:12px;border-radius:14px;background:#152033;border:1px solid #293953;text-align:center;min-width:0}
+.score-card small{display:block;color:#b4c0d2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.score-card strong{display:block;font-size:clamp(28px,8vw,42px);margin-top:4px}
+.blue{color:#5b9cff}.yellow{color:#ffca45}
+.status{max-width:650px;margin:0 auto 12px;padding:10px 13px;border-radius:10px;background:#141d2c;color:#dce5f3;text-align:center;min-height:42px}
+.board-wrap{width:min(100%,520px);margin:auto;background:#111927;border:1px solid #29364c;border-radius:20px;padding:12px;box-shadow:0 18px 55px #0006;touch-action:manipulation}
+canvas{display:block;width:100%;aspect-ratio:1;touch-action:none;cursor:crosshair}
+.hint{text-align:center;color:#b5c1d2;margin:10px 0 0;font-size:14px}
+.actions{display:flex;justify-content:center;flex-wrap:wrap;gap:9px;margin:14px auto 8px}
+.btn{border:0;border-radius:10px;padding:12px 16px;min-height:46px;background:#2670dc;color:white;font-weight:700;font-size:14px;cursor:pointer}
+.btn.alt{background:#27364c;color:#f2f5fa}
+.mini{max-width:650px;margin:12px auto 0;padding:14px;border-radius:12px;background:#131d2e;border:1px solid #27364a}
+.mini h2{font-size:17px;margin:0 0 10px}
+.rank{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:7px}
+.rank-card{background:#1a273b;border-radius:9px;padding:9px 10px;color:#dbe5f3;font-size:14px;display:flex;justify-content:space-between;gap:8px}
+.rank-card b{color:#fff}
+.muted{color:#96a4b9;font-size:13px;line-height:1.5}
+.back{display:block;text-align:center;color:#8dc2ff;margin:17px auto}
+.signin{color:#ffd369;font-weight:700}
+.history{max-width:650px;margin:10px auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.pill{background:#1b2940;border:1px solid #354862;border-radius:999px;padding:7px 10px;font-size:12px;color:#dce5f3}
+@media(max-width:420px){
+ body{padding:12px 8px 22px}
+ .board-wrap{padding:7px}
+ .score-card{padding:10px 6px}
+ .btn{padding:11px 13px}
+ .title{margin-top:10px}
+}
+</style>
+</head>
+<body>
+<main>
+<div class="top">
+  <div class="brand">NYG COMPETITORS</div>
+  <div class="round" id="roundBadge">RAUNDI — / 3</div>
+</div>
+
+<h1 class="title">NYG DARTS</h1>
+<p class="subtitle">Lenga kwenye ubao, tupa mishale 3 kwa kila raundi, jumlisha pointi zako na shindana wiki nzima.</p>
+
+<div class="scores">
+  <div class="score-card"><small class="blue" id="p1Name">Mchezaji 1</small><strong class="blue" id="p1Score">0</strong></div>
+  <div class="score-card"><small class="yellow" id="p2Name">Mchezaji 2</small><strong class="yellow" id="p2Score">0</strong></div>
+</div>
+
+<div class="status" id="status">Chagua mshindani online au kompyuta ili kuanza.</div>
+
+<div class="board-wrap">
+  <canvas id="board" aria-label="Ubao wa darts. Gusa sehemu unayotaka kulenga."></canvas>
+  <div class="hint" id="hint">Kila raundi una mishale 3. Pointi huongezwa papo hapo.</div>
+</div>
+<div class="history" id="history"></div>
+
+<div class="actions" id="startActions">
+  <button class="btn" id="onlineBtn">Tafuta mpinzani online</button>
+  <button class="btn alt" id="computerBtn">Cheza na kompyuta</button>
+</div>
+
+<section class="mini">
+  <h2>Washindi 5 wa wiki iliyopita</h2>
+  <div id="previousWinners" class="rank"><span class="muted">Inapakia...</span></div>
+</section>
+
+<section class="mini">
+  <h2>Ubao wa wiki hii</h2>
+  <p id="weekInfo" class="muted">Alama za mechi zilizokamilika huhifadhiwa hapa na kwenye dashboard.</p>
+  <div id="leaderboard" class="rank"></div>
+</section>
+
+<a class="back" href="/nyg-games.html">← Rudi Games &amp; Refreshment</a>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const canvas=$("board"),ctx=canvas.getContext("2d");
+const sectors=[20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
+let signedIn=false,match=null,queued=false,searchStarted=0,pollTimer=0,throwBusy=false;
+
+function scoreAt(x,y){
+  const r=Math.hypot(x,y);
+  if(r>1)return{points:0,label:"MISS"};
+  if(r<=.052)return{points:50,label:"BULL 50"};
+  if(r<=.105)return{points:25,label:"BULL 25"};
+  const a=(Math.atan2(x,-y)+Math.PI*2)%(Math.PI*2);
+  const n=sectors[Math.round(a/(Math.PI*2/20))%20];
+  const m=r>=.54&&r<=.63?3:r>=.91&&r<=.98?2:1;
+  return{points:n*m,label:(m===3?"T":m===2?"D":"")+n};
+}
+
+function draw(){
+  const w=canvas.width;
+  if(!w)return;
+  const c=w/2,R=w*.405;
+  ctx.clearRect(0,0,w,w);
+  ctx.fillStyle="#111927";
+  ctx.fillRect(0,0,w,w);
+
+  ctx.beginPath();
+  ctx.arc(c,c,R*1.16,0,Math.PI*2);
+  ctx.fillStyle="#252d3b";
+  ctx.fill();
+  ctx.lineWidth=R*.035;
+  ctx.strokeStyle="#090d14";
+  ctx.stroke();
+
+  for(let i=0;i<20;i++){
+    const a=-Math.PI/2+i*Math.PI/10;
+    ctx.beginPath();
+    ctx.moveTo(c,c);
+    ctx.arc(c,c,R*.98,a-Math.PI/20,a+Math.PI/20);
+    ctx.closePath();
+    ctx.fillStyle=i%2?"#171a20":"#eceef0";
+    ctx.fill();
+  }
+
+  for(let i=0;i<20;i++){
+    const a=-Math.PI/2+i*Math.PI/10;
+    for(const ring of [[.98,.91,"#e04443"],[.63,.54,"#2b9e59"]]){
+      ctx.beginPath();
+      ctx.arc(c,c,R*ring[0],a-Math.PI/20,a+Math.PI/20);
+      ctx.arc(c,c,R*ring[1],a+Math.PI/20,a-Math.PI/20,true);
+      ctx.closePath();
+      ctx.fillStyle=ring[2];
+      ctx.fill();
+    }
+  }
+
+  ctx.beginPath();
+  ctx.arc(c,c,R*.105,0,Math.PI*2);
+  ctx.fillStyle="#259b58";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(c,c,R*.052,0,Math.PI*2);
+  ctx.fillStyle="#e04443";
+  ctx.fill();
+
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.font="bold "+Math.max(10,w*.035)+"px Arial";
+  ctx.fillStyle="#dce3ed";
+  for(let i=0;i<20;i++){
+    const a=-Math.PI/2+i*Math.PI/10;
+    ctx.fillText(String(sectors[i]),c+Math.cos(a)*R*1.09,c+Math.sin(a)*R*1.09);
+  }
+
+  if(match){
+    [[match.player1,"#438cff"],[match.player2,"#ffd044"]].forEach(pair=>
+      (pair[0].throws||[]).forEach(d=>{
+        ctx.beginPath();
+        ctx.arc(c+d.x*R,c+d.y*R,Math.max(4,w*.012),0,Math.PI*2);
+        ctx.fillStyle=pair[1];
+        ctx.fill();
+        ctx.lineWidth=Math.max(1.5,w*.004);
+        ctx.strokeStyle="#fff";
+        ctx.stroke();
+      })
+    );
+  }
+}
+
+function resize(){
+  const r=canvas.getBoundingClientRect();
+  const size=Math.max(240,Math.floor(r.width*Math.min(devicePixelRatio||1,2)));
+  if(canvas.width!==size){canvas.width=canvas.height=size;draw()}
+}
+window.addEventListener("resize",resize);
+resize();
+
+async function api(path,body){
+  const response=await fetch(path,{
+    method:body?"POST":"GET",
+    credentials:"same-origin",
+    cache:"no-store",
+    headers:body?{"content-type":"application/json"}:{accept:"application/json"},
+    body:body?JSON.stringify(body):undefined
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error||"Huduma haikupatikana.");
+  return data;
+}
+
+function renderMatch(m){
+  match=m;
+  $("startActions").hidden=true;
+  $("p1Name").textContent=m.player1.name;
+  $("p2Name").textContent=m.player2.name;
+  $("p1Score").textContent=m.player1.points;
+  $("p2Score").textContent=m.player2.points;
+  $("roundBadge").textContent=m.status==="complete"?"MECHI IMEISHA":"RAUNDI "+m.round+" / 3";
+
+  const mine=m.you_are_player1?m.player1:m.player2;
+  const remaining=3-(mine.visit||0);
+
+  if(m.status==="complete"){
+    $("status").textContent=m.tie
+      ?"Mechi imeisha kwa sare. Pointi zako zimehifadhiwa."
+      :m.winner_is_you
+        ?"Umeshinda! Pointi zimehifadhiwa kwenye mashindano ya wiki."
+        :"Mechi imeisha. Pointi zako zimehifadhiwa.";
+    $("hint").textContent="Anza mechi nyingine; pointi zako za wiki zinaendelea kujumlishwa.";
+    $("startActions").hidden=false;
+    $("onlineBtn").textContent="Mechi nyingine online";
+    $("computerBtn").textContent="Mechi nyingine na kompyuta";
+  }else{
+    $("status").textContent=m.your_turn
+      ?"Zamu yako: gusa ubao kulenga ("+remaining+" mshale zimebaki)."
+      :"Zamu ya "+(m.you_are_player1?m.player2.name:m.player1.name)+"… pointi zitasasishwa moja kwa moja.";
+    $("hint").textContent=m.your_turn
+      ?"Gusa unapo lenga. Ubao huhesabu single, double, triple na bull."
+      :"Subiri zamu ya mpinzani; alama zitaonekana moja kwa moja.";
+  }
+
+  $("history").replaceChildren();
+  mine.throws.slice(-3).forEach((d,i)=>{
+    const p=document.createElement("span");
+    p.className="pill";
+    p.textContent="Mshale "+(mine.throws.length-2+i)+": "+d.label+" (+"+d.points+")";
+    $("history").append(p);
+  });
+  draw();
+}
+
+async function loadActive(){
+  try{
+    const data=await api("/api/darts/active");
+    if(data.status==="match"){
+      queued=false;
+      renderMatch(data.match);
+    }else if(data.status==="waiting"){
+      queued=true;
+      searchStarted=searchStarted||Date.now();
+      $("startActions").hidden=true;
+      $("status").textContent="Tunatafuta mpinzani online…";
+    }else if(!match||match.status==="complete"){
+      $("startActions").hidden=false;
+      $("roundBadge").textContent="RAUNDI — / 3";
+    }
+  }catch(error){
+    if(error.message.includes("Ingia")){
+      $("status").innerHTML='Kushiriki kunahitaji akaunti. <a class="signin" href="/nyg-signin.html">Ingia</a> au <a class="signin" href="/nyg-signup.html">jisajili</a>.';
+    }
+  }
+}
+
+async function online(){
+  if(!signedIn){
+    $("status").innerHTML='Kushindana kunahitaji akaunti. <a class="signin" href="/nyg-signin.html">Ingia</a> au <a class="signin" href="/nyg-signup.html">jisajili kwanza</a>.';
+    return;
+  }
+
+  match=null;
+  queued=true;
+  searchStarted=Date.now();
+  $("startActions").hidden=true;
+  $("status").textContent="Tunatafuta mpinzani online… kompyuta itaanza baada ya sekunde 15 ikiwa hakuna mtu.";
+
+  try{
+    const data=await api("/api/darts/matchmaking",{});
+    if(data.status==="match")renderMatch(data.match);
+    else pollTimer=setTimeout(pollMatch,1300);
+  }catch(error){
+    queued=false;
+    $("startActions").hidden=false;
+    $("status").textContent=error.message;
+  }
+}
+
+async function pollMatch(){
+  if(!queued)return;
+  await loadActive();
+  if(!queued||match)return;
+  if(Date.now()-searchStarted>=15000){
+    await computer(true);
+    return;
+  }
+  pollTimer=setTimeout(pollMatch,1300);
+}
+
+async function computer(fallback){
+  if(!signedIn){
+    $("status").innerHTML='Kushindana kunahitaji akaunti. <a class="signin" href="/nyg-signin.html">Ingia</a> au <a class="signin" href="/nyg-signup.html">jisajili kwanza</a>.';
+    return;
+  }
+
+  clearTimeout(pollTimer);
+  queued=false;
+
+  try{
+    const data=await api("/api/darts/computer",{});
+    renderMatch(data.match);
+    if(fallback)$("status").textContent="Hakuna mpinzani aliyepatikana; sasa unacheza na kompyuta.";
+  }catch(error){
+    $("status").textContent=error.message;
+    $("startActions").hidden=false;
+  }
+}
+
+async function throwAt(x,y){
+  if(!match||!match.your_turn||throwBusy)return;
+  throwBusy=true;
+  const preview=scoreAt(x,y);
+  $("status").textContent=preview.label+" — +"+preview.points+" pointi";
+
+  try{
+    const data=await api("/api/darts/throw",{match_id:match.id,x,y});
+    renderMatch(data.match);
+  }catch(error){
+    $("status").textContent=error.message;
+    await loadActive();
+  }finally{
+    throwBusy=false;
+  }
+}
+
+canvas.addEventListener("pointerdown",event=>{
+  if(!match||!match.your_turn||throwBusy)return;
+  const rect=canvas.getBoundingClientRect();
+  const px=(event.clientX-rect.left)/rect.width*canvas.width;
+  const py=(event.clientY-rect.top)/rect.height*canvas.height;
+  const c=canvas.width/2,R=canvas.width*.405;
+  throwAt((px-c)/R,(py-c)/R);
+});
+
+function showRanks(element,rows,empty){
+  element.replaceChildren();
+  if(!rows.length){
+    const label=document.createElement("span");
+    label.className="muted";
+    label.textContent=empty;
+    element.append(label);
+    return;
+  }
+
+  rows.forEach(row=>{
+    const card=document.createElement("div");
+    card.className="rank-card";
+    const name=document.createElement("span");
+    const points=document.createElement("b");
+    name.textContent=row.rank+". "+row.full_name;
+    points.textContent=row.points+" pts";
+    card.append(name,points);
+    element.append(card);
+  });
+}
+
+async function loadRanks(){
+  try{
+    const data=await api("/api/darts/leaderboard");
+    showRanks($("leaderboard"),data.leaderboard||[],"Bado hakuna pointi wiki hii.");
+    showRanks($("previousWinners"),data.previous_week?.winners||[],"Washindi wataonekana baada ya tangazo la Jumapili saa 3:00.");
+    $("weekInfo").textContent="Ubao huanza wiki mpya kila Jumapili saa 3:00 asubuhi (saa za Tanzania). Pointi za mechi zilizokamilika huhifadhiwa.";
+  }catch(error){
+    $("weekInfo").textContent=error.message;
+  }
+}
+
+async function init(){
+  try{
+    const data=await api("/api/members/me");
+    signedIn=!!data.member;
+  }catch{}
+
+  if(signedIn){
+    loadActive();
+    api("/api/darts/presence",{}).catch(()=>{});
+    setInterval(()=>api("/api/darts/presence",{}).catch(()=>{}),18000);
+  }
+
+  loadRanks();
+  setInterval(loadRanks,30000);
+  setInterval(()=>{
+    if(signedIn&&match&&match.status==="open"&&!throwBusy)loadActive();
+  },1200);
+}
+
+$("onlineBtn").onclick=online;
+$("computerBtn").onclick=()=>computer(false);
+init();
+</script>
+</body>
+</html>
