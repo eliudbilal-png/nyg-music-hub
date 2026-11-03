@@ -419,6 +419,7 @@ async function loadPuzzleResults() {
         document.getElementById('details').hidden = false;
         loadQuizResults();
         loadPuzzleResults();
+        loadDartsResults();
       } catch {
         status.textContent =
           'Imeshindikana kuwasiliana na mfumo. Jaribu tena.';
@@ -427,6 +428,7 @@ async function loadPuzzleResults() {
 
     loadMember();
     setInterval(loadQuizResults, 15000);
+    setInterval(loadDartsResults, 30000);
     setInterval(loadPuzzleResults, 5000);
     window.addEventListener('focus', loadPuzzleResults);
   </script>
