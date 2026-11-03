@@ -1,12 +1,12 @@
 const WEEK = 7 * 24 * 60 * 60 * 1000;
-const TURN_MS = 3 * 60 * 1000;
+const TURN_MS = 60 * 1000;
 const SECTORS = [20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
 let schemaPromise;
 
 function weekStart(timestamp) {
-  const local = new Date(timestamp + 10800000); // Tanzania is UTC+3
+  const local = new Date(timestamp + 10800000);
   local.setUTCDate(local.getUTCDate() - local.getUTCDay());
-  local.setUTCHours(9, 0, 0, 0); // Sunday 09:00 EAT = saa 3:00 asubuhi
+  local.setUTCHours(9, 0, 0, 0);
   let start = local.getTime() - 10800000;
   if (timestamp < start) start -= WEEK;
   return new Date(start).toISOString();
@@ -25,7 +25,9 @@ async function ensureTables(db) {
       const columns = await db.prepare("PRAGMA table_info(nyg_darts_matches)").all();
 
       if (!(columns.results || []).some(column => column.name === "round_deadline")) {
-        await db.prepare("ALTER TABLE nyg_darts_matches ADD COLUMN round_deadline INTEGER NOT NULL DEFAULT 0").run();
+        await db.prepare(
+          "ALTER TABLE nyg_darts_matches ADD COLUMN round_deadline INTEGER NOT NULL DEFAULT 0"
+        ).run();
       }
 
       await db.prepare(
@@ -67,7 +69,7 @@ function matchView(row, memberId) {
     status: row.status,
     opponent_type: row.opponent_type,
     round: Number(row.round_no),
-    rounds_total: 3,
+    rounds_total: null,
     time_left: Math.max(
       0,
       Math.ceil((Number(row.round_deadline || 0) - Date.now()) / 1000)
@@ -137,6 +139,7 @@ async function activeState(db, member) {
 
   if (queued) {
     const now = Date.now();
+
     await db.prepare(
       "UPDATE nyg_darts_queue SET queued_at=? WHERE member_id=?"
     ).bind(now, member.id).run();
@@ -223,27 +226,12 @@ async function updateMatchClock(db, initialRow) {
   if (Number(row.round_deadline || 0) <= now) {
     let turn = row.turn_player_id;
     let round = Number(row.round_no);
-    let done = false;
 
     if (turn === row.player1_id) {
       turn = row.player2_id;
-    } else if (round >= 3) {
-      done = true;
     } else {
       round += 1;
       turn = row.player1_id;
-    }
-
-    if (done) {
-      return finishMatch(
-        db,
-        row,
-        Number(row.player1_points),
-        Number(row.player2_points),
-        JSON.parse(row.player1_throws || "[]"),
-        JSON.parse(row.player2_throws || "[]"),
-        now
-      );
     }
 
     await db.prepare(
@@ -281,7 +269,7 @@ async function updateMatchClock(db, initialRow) {
     const throws = JSON.parse(row.player2_throws || "[]");
     throws.push(dart);
 
-    // updated_at prevents two simultaneous polls from adding the same bot throw.
+    // Huzuia maombi mawili ya wakati mmoja kuongeza dart ileile ya kompyuta.
     await db.prepare(
       "UPDATE nyg_darts_matches SET player2_points=player2_points+?,player2_throws=?,updated_at=? WHERE id=? AND status='open' AND turn_player_id=? AND updated_at=?"
     ).bind(
@@ -322,7 +310,7 @@ async function finishMatch(db, row, p1, p2, t1, t2, now) {
 
   const statements = [
     db.prepare(
-      "UPDATE nyg_darts_matches SET status='complete',round_no=3,round_deadline=0,player1_points=?,player2_points=?,player1_throws=?,player2_throws=?,player1_visit=0,player2_visit=0,winner_id=?,updated_at=? WHERE id=? AND status='open'"
+      "UPDATE nyg_darts_matches SET status='complete',round_deadline=0,player1_points=?,player2_points=?,player1_throws=?,player2_throws=?,player1_visit=0,player2_visit=0,winner_id=?,updated_at=? WHERE id=? AND status='open'"
     ).bind(
       p1,
       p2,
@@ -345,7 +333,6 @@ async function finishMatch(db, row, p1, p2, t1, t2, now) {
     )
   ];
 
-  // Kompyuta haingii kwenye leaderboard; pointi za mchezaji ndizo zinazohesabiwa.
   if (row.opponent_type === "online") {
     statements.push(
       db.prepare(
@@ -371,6 +358,7 @@ async function finishMatch(db, row, p1, p2, t1, t2, now) {
 
 export async function handleDartsApi(request, env, url, path, method, tools) {
   if (!path.startsWith("/api/darts/")) return null;
+
   if (!env.MEMBERS_DB) {
     return tools.reply({ error: "Mfumo wa NYG Darts haujaunganishwa." }, 503);
   }
@@ -483,6 +471,43 @@ export async function handleDartsApi(request, env, url, path, method, tools) {
     return tools.reply({ match: matchView(updated, member.id) });
   }
 
+  if (path === "/api/darts/finish" && method === "POST") {
+    const data = await request.json().catch(() => null);
+    const id = typeof data?.match_id === "string" ? data.match_id : "";
+
+    try {
+      const row = await getMemberMatch(db, id, member.id);
+
+      if (!row) {
+        return tools.reply({ error: "Mechi haijapatikana." }, 404);
+      }
+
+      if (row.status === "complete") {
+        return tools.reply({ match: matchView(row, member.id) });
+      }
+
+      const current = await updateMatchClock(db, row);
+
+      if (current.status === "complete") {
+        return tools.reply({ match: matchView(current, member.id) });
+      }
+
+      const finished = await finishMatch(
+        db,
+        current,
+        Number(current.player1_points),
+        Number(current.player2_points),
+        JSON.parse(current.player1_throws || "[]"),
+        JSON.parse(current.player2_throws || "[]"),
+        Date.now()
+      );
+
+      return tools.reply({ match: matchView(finished, member.id) });
+    } catch {
+      return tools.reply({ error: "Imeshindikana kumaliza mechi na kuhifadhi alama." }, 500);
+    }
+  }
+
   if (path === "/api/darts/throw" && method === "POST") {
     const data = await request.json().catch(() => null);
     const id = typeof data?.match_id === "string" ? data.match_id : "";
@@ -561,7 +586,7 @@ export async function handleDartsApi(request, env, url, path, method, tools) {
 
       if (Number(savedThrow.meta?.changes || 0) !== 1) {
         return tools.reply({
-          error: "Ombi jingine la dart limefika kwa wakati mmoja. Jaribu kurusha tena."
+          error: "Dart nyingine imehifadhiwa kwa wakati mmoja. Jaribu tena."
         }, 409);
       }
 
