@@ -335,6 +335,61 @@ async function loadPuzzleResults() {
       'Imeshindikana kupakia matokeo ya game.';
   }
 }  
+   async function loadDartsResults() {
+  const status = document.getElementById('dartsResultsStatus');
+  const previous = document.getElementById('dartsPreviousWinners');
+  const current = document.getElementById('dartsCurrentLeaders');
+
+  try {
+    const response = await fetch('/api/darts/leaderboard', {
+      cache: 'no-store'
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Imeshindikana kupata matokeo ya Darts.');
+    }
+
+    const render = (element, rows, emptyMessage) => {
+      element.replaceChildren();
+
+      if (!rows.length) {
+        element.textContent = emptyMessage;
+        return;
+      }
+
+      const list = document.createElement('ol');
+      list.className = 'ranking';
+
+      rows.forEach(row => {
+        const item = document.createElement('li');
+        item.textContent =
+          row.rank + '. ' + row.full_name + ' — ' + row.points + ' pointi';
+        list.appendChild(item);
+      });
+
+      element.appendChild(list);
+    };
+
+    render(
+      previous,
+      data.previous_week?.winners || [],
+      'Washindi wataonekana baada ya tangazo la Jumapili saa 3:00 asubuhi.'
+    );
+
+    render(
+      current,
+      data.leaderboard || [],
+      'Bado hakuna alama wiki hii. Anza kucheza!'
+    );
+
+    status.textContent =
+      'Matokeo mapya hutangazwa kila Jumapili saa 3:00 asubuhi (saa za Tanzania).';
+  } catch (error) {
+    status.textContent =
+      error.message || 'Imeshindikana kupakia matokeo ya NYG Darts.';
+  }
+} 
     async function loadMember() {
       const status = document.getElementById('status');
 
