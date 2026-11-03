@@ -1,3 +1,4 @@
+import { handleDartsApi } from './darts-api.js';
 const enc = new TextEncoder();
 
 function base64url(bytes) {
@@ -611,6 +612,12 @@ export default {
         const memberAuthResponse =
       await handleMemberAuth(request, env, url, path, method);
     if (memberAuthResponse) return memberAuthResponse;
+    const dartsResponse = await handleDartsApi(request, env, url, path, method, {
+  reply,
+  sameOrigin,
+  getMember: getSignedInQuizMember
+});
+if (dartsResponse) return dartsResponse;
        // NYG QUIZ - MEMBER QUESTIONS AND ANSWERS
         if (path === '/api/quiz/results' && method === 'GET') {
       if (!env.QUIZ_DB || !env.MEMBERS_DB) {
