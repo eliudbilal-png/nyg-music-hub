@@ -2173,6 +2173,97 @@ if (path.startsWith('/api/testimonies/audio/') &&
       }
 
       // NYG QUIZ - ADMIN SETUP
+
+      
+if (path === '/api/quiz/admin/prizes' && method === 'POST') {
+  if (!env.QUIZ_DB) {
+    return reply({ error: 'Quiz database haijaunganishwa.' }, 503);
+  }
+
+  try {
+    const data = await request.json();
+    const competitionId = String(data.competition_id || '').trim();
+    const prizes = [data.prize_1, data.prize_2, data.prize_3]
+      .map(value => String(value || '').trim());
+
+    if (!competitionId || prizes.some(p => p.length > 200)) {
+      return reply({ error: 'Kagua taarifa za zawadi.' }, 400);
+    }
+
+    await env.QUIZ_DB.prepare(`
+      CREATE TABLE IF NOT EXISTS nyg_quiz_prizes (
+        competition_id TEXT PRIMARY KEY,
+        prize_1 TEXT NOT NULL DEFAULT '',
+        prize_2 TEXT NOT NULL DEFAULT '',
+        prize_3 TEXT NOT NULL DEFAULT ''
+      )
+    `).run();
+
+    await env.QUIZ_DB.prepare(`
+      INSERT INTO nyg_quiz_prizes
+        (competition_id, prize_1, prize_2, prize_3)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(competition_id) DO UPDATE SET
+        prize_1 = excluded.prize_1,
+        prize_2 = excluded.prize_2,
+        prize_3 = excluded.prize_3
+    `).bind(competitionId, ...prizes).run();
+
+    return reply({ saved: true, message: 'Zawadi zimehifadhiwa.' });
+  } catch (error) {
+    console.error('Quiz prizes error:', error);
+    return reply({ error: 'Imeshindikana kuhifadhi zawadi.' }, 500);
+  }
+}
+
+if (path === '/api/quiz/admin/prizes' && method === 'GET') {
+  if (!env.QUIZ_DB) {
+    return reply({
+      error: 'Quiz database haijaunganishwa.'
+    }, 503);
+  }
+
+  try {
+    const competitionId = String(
+      url.searchParams.get('competition_id') || ''
+    ).trim();
+
+    if (!competitionId) {
+      return reply({
+        error: 'Competition ID inahitajika.'
+      }, 400);
+    }
+
+    await env.QUIZ_DB.prepare(`
+      CREATE TABLE IF NOT EXISTS nyg_quiz_prizes (
+        competition_id TEXT PRIMARY KEY,
+        prize_1 TEXT NOT NULL DEFAULT '',
+        prize_2 TEXT NOT NULL DEFAULT '',
+        prize_3 TEXT NOT NULL DEFAULT ''
+      )
+    `).run();
+
+    const prizes = await env.QUIZ_DB.prepare(`
+      SELECT prize_1, prize_2, prize_3
+      FROM nyg_quiz_prizes
+      WHERE competition_id = ?
+    `).bind(competitionId).first();
+
+    return reply({
+      competition_id: competitionId,
+      prize_1: prizes?.prize_1 || '',
+      prize_2: prizes?.prize_2 || '',
+      prize_3: prizes?.prize_3 || ''
+    });
+
+  } catch (error) {
+    console.error('Quiz prizes GET error:', error);
+    return reply({
+      error: 'Imeshindikana kusoma zawadi.'
+    }, 500);
+  }
+}
+
       
 if (path === '/api/quiz/admin/bank-summary' && method === 'GET') {
   if (!env.QUIZ_DB) {
