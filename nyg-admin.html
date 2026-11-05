@@ -207,6 +207,39 @@
 
     <h3>FURSA ZA KAZI</h3>
     <p>Matangazo ya kazi na maombi ya waombaji.</p>
+    
+<form id="jobForm">
+  <label for="jobTitle">JINA LA KAZI</label>
+  <input id="jobTitle" type="text" required>
+
+  <label for="jobCompany">KAMPUNI / TAASISI</label>
+  <input id="jobCompany" type="text" required>
+
+  <label for="jobLocation">MAHALI PA KAZI</label>
+  <input id="jobLocation" type="text">
+
+  <label for="jobDescription">MAELEZO YA KAZI</label>
+  <textarea id="jobDescription" required></textarea>
+
+  <label for="jobRequirements">SIFA ZA MWOMBAJI</label>
+  <textarea id="jobRequirements"></textarea>
+
+  <label for="jobLink">LINK YA MAOMBI</label>
+  <input id="jobLink" type="url">
+
+  <label for="jobEmail">EMAIL YA MAOMBI</label>
+  <input id="jobEmail" type="email">
+
+  <label for="jobDeadline">TAREHE YA MWISHO</label>
+  <input id="jobDeadline" type="date">
+
+  <button type="submit" id="saveJobButton">
+    HIFADHI TANGAZO KAMA DRAFT
+  </button>
+
+  <p id="jobMessage" role="status"></p>
+</form>
+
 
     <hr>
 
@@ -747,6 +780,53 @@ card.appendChild(remove);
     message.textContent = error.message || 'Hitilafu imetokea.';
   }
 }
+  
+document.getElementById('jobForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  const button = document.getElementById('saveJobButton');
+  const message = document.getElementById('jobMessage');
+
+  const value = id => document.getElementById(id).value.trim();
+
+  const payload = {
+    title: value('jobTitle'),
+    company: value('jobCompany'),
+    location: value('jobLocation'),
+    description: value('jobDescription'),
+    requirements: value('jobRequirements'),
+    application_link: value('jobLink'),
+    contact_email: value('jobEmail'),
+    deadline: value('jobDeadline')
+  };
+
+  button.disabled = true;
+  message.textContent = 'Inahifadhi tangazo...';
+
+  try {
+    const response = await fetch('/api/jobs/admin/create', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || result.success !== true) {
+      throw new Error(result.error || 'Imeshindikana kuhifadhi tangazo.');
+    }
+
+    message.textContent = 'Tangazo limehifadhiwa kama Draft. Namba: ' + result.job_id;
+    document.getElementById('jobForm').reset();
+
+  } catch (error) {
+    message.textContent = error.message || 'Hitilafu imetokea.';
+  } finally {
+    button.disabled = false;
+  }
+});
+
   checkSession();
 </script>
 
