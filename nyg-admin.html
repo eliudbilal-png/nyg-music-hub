@@ -240,6 +240,15 @@
   <p id="jobMessage" role="status"></p>
 </form>
 
+<section id="jobsAdminList">
+  <h3>MATANGAZO YA KAZI YALIYOHIFADHIWA</h3>
+  <button type="button" id="refreshJobsButton">
+    ONYESHA / SASISHA MATANGAZO
+  </button>
+  <p id="jobsListMessage" role="status"></p>
+  <div id="jobsList"></div>
+</section>
+
 
     <hr>
 
@@ -826,6 +835,61 @@ document.getElementById('jobForm').addEventListener('submit', async (event) => {
     button.disabled = false;
   }
 });
+  
+async function loadJobsAdminList() {
+  const list = document.getElementById('jobsList');
+  const message = document.getElementById('jobsListMessage');
+
+  list.replaceChildren();
+  message.textContent = 'Inasoma matangazo...';
+
+  try {
+    const response = await fetch('/api/jobs/admin/list', {
+      credentials: 'same-origin',
+      cache: 'no-store'
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || result.success !== true) {
+      throw new Error(result.error || 'Imeshindikana kusoma matangazo.');
+    }
+
+    const jobs = result.jobs || [];
+    message.textContent = 'Jumla ya matangazo: ' + jobs.length;
+
+    if (jobs.length === 0) {
+      message.textContent = 'Hakuna matangazo yaliyohifadhiwa.';
+      return;
+    }
+
+    for (const job of jobs) {
+      const card = document.createElement('div');
+      card.style.cssText = 'border:1px solid #6485a8;padding:12px;margin:12px 0;border-radius:8px;';
+
+      const title = document.createElement('h4');
+      title.textContent = '#' + job.id + ' — ' + job.title;
+
+      const details = document.createElement('p');
+      details.textContent = (job.company || '') + ' | ' +
+        (job.location || 'Eneo halijawekwa');
+
+      const status = document.createElement('p');
+      status.textContent = 'HALI: ' +
+        (job.status === 'published' ? 'PUBLISHED' : 'DRAFT');
+
+      card.append(title, details, status);
+      list.appendChild(card);
+    }
+
+  } catch (error) {
+    message.textContent = error.message || 'Hitilafu imetokea.';
+  }
+}
+
+document.getElementById('refreshJobsButton')
+  .addEventListener('click', loadJobsAdminList);
+
 
   checkSession();
 </script>
