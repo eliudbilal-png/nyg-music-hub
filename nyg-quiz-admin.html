@@ -4,6 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NYG Quiz Admin</title>
+  
+<style>
+  html { visibility: hidden; }
+</style>
+<script>
+  (async function () {
+    try {
+      const response = await fetch('/api/testimonies/admin/session', {
+        credentials: 'same-origin',
+        cache: 'no-store'
+      });
+      const data = await response.json();
+      if (!response.ok || !data.authenticated) {
+        location.replace('/nyg-admin.html');
+        return;
+      }
+      document.documentElement.style.visibility = 'visible';
+    } catch (error) {
+      location.replace('/nyg-admin.html');
+    }
+  })();
+</script>
+
   <style>
     * { box-sizing: border-box; }
     body {
