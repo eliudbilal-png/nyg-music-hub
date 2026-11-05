@@ -2524,7 +2524,36 @@ if (path === '/api/quiz/admin/bank-summary' && method === 'GET') {
           error: 'Imeshindikana kuhifadhi swali. Hakikisha nafasi hiyo haijatumika.'
         }, 500);
       }
-    }    
+    }  
+      
+    // NYG JOBS - ADMIN LIST
+    if (path === '/api/jobs/admin/list' && method === 'GET') {
+      if (!env.JOBS_DB) {
+        return reply({ error: 'Jobs database haijaunganishwa.' }, 503);
+      }
+
+      try {
+        const result = await env.JOBS_DB.prepare(`
+          SELECT id, title, company, location, description,
+                 requirements, application_link, contact_email,
+                 deadline, status, created_at, updated_at
+          FROM jobs
+          ORDER BY id DESC
+          LIMIT 100
+        `).all();
+
+        return reply({
+          success: true,
+          jobs: result.results || []
+        });
+      } catch (error) {
+        console.error('NYG Jobs admin list error:', error);
+        return reply({
+          error: 'Imeshindikana kusoma orodha ya matangazo.'
+        }, 500);
+      }
+    }
+
     // NYG JOBS - ADMIN CREATE JOB
     if (path === '/api/jobs/admin/create' && method === 'POST') {
       if (!env.JOBS_DB) {
