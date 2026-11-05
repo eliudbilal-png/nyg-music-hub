@@ -153,6 +153,38 @@
     <button type="button" id="createDay">Panga siku na chagua maswali 10</button>
   </section>
 
+  
+<section>
+  <h2>3. ZAWADI ZA NYG QUIZ</h2>
+  <p class="note">
+    Weka zawadi za washindi watatu kwa kila mashindano.
+  </p>
+
+  <label for="prizeCompetitionId">Competition ID</label>
+  <input id="prizeCompetitionId"
+         placeholder="Bandika ID ya mashindano">
+
+  <label for="quizPrize1">Zawadi ya Nafasi ya 1</label>
+  <input id="quizPrize1" maxlength="200"
+         placeholder="Zawadi ya mshindi wa kwanza">
+
+  <label for="quizPrize2">Zawadi ya Nafasi ya 2</label>
+  <input id="quizPrize2" maxlength="200"
+         placeholder="Zawadi ya mshindi wa pili">
+
+  <label for="quizPrize3">Zawadi ya Nafasi ya 3</label>
+  <input id="quizPrize3" maxlength="200"
+         placeholder="Zawadi ya mshindi wa tatu">
+
+  <button type="button" id="loadQuizPrizes">
+    ANGALIA ZAWADI
+  </button>
+
+  <button type="button" id="saveQuizPrizes">
+    HIFADHI ZAWADI
+  </button>
+</section>
+
   <section>
     <div id="message" role="status"></div>
   </section>
@@ -330,6 +362,82 @@ await loadQuizBankSummary();
       showMessage(error.message, true);
     }
   });
+  
+  // NYG QUIZ - PRIZES MANAGEMENT
+
+  document.getElementById('loadQuizPrizes')
+    .addEventListener('click', async () => {
+      const id = document.getElementById(
+        'prizeCompetitionId'
+      ).value.trim();
+
+      if (!id) {
+        showMessage('Weka Competition ID kwanza.', true);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          '/api/quiz/admin/prizes?competition_id=' +
+          encodeURIComponent(id),
+          { credentials: 'same-origin', cache: 'no-store' }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Imeshindikana.');
+        }
+
+        document.getElementById('quizPrize1').value =
+          data.prize_1 || '';
+        document.getElementById('quizPrize2').value =
+          data.prize_2 || '';
+        document.getElementById('quizPrize3').value =
+          data.prize_3 || '';
+
+        showMessage('Zawadi zimefunguliwa.');
+      } catch (error) {
+        showMessage(error.message, true);
+      }
+    });
+
+  document.getElementById('saveQuizPrizes')
+    .addEventListener('click', async () => {
+      const competitionId = document.getElementById(
+        'prizeCompetitionId'
+      ).value.trim();
+
+      if (!competitionId) {
+        showMessage('Weka Competition ID kwanza.', true);
+        return;
+      }
+
+      try {
+        const result = await postJson(
+          '/api/quiz/admin/prizes',
+          {
+            competition_id: competitionId,
+            prize_1: document.getElementById(
+              'quizPrize1'
+            ).value.trim(),
+            prize_2: document.getElementById(
+              'quizPrize2'
+            ).value.trim(),
+            prize_3: document.getElementById(
+              'quizPrize3'
+            ).value.trim()
+          }
+        );
+
+        showMessage(
+          result.message || 'Zawadi zimehifadhiwa.'
+        );
+      } catch (error) {
+        showMessage(error.message, true);
+      }
+    });
+
 </script>
 </body>
 </html>
