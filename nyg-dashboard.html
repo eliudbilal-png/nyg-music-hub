@@ -266,7 +266,15 @@ async function loadPuzzleResults() {
     } else {
       leaders.slice(0, 10).forEach(player => {
         const card = document.createElement('article');
-        card.className = 'quiz-card';
+        
+card.className = 'quiz-card';
+if (Number(player.rank) >= 1 && Number(player.rank) <= 3) {
+  card.style.background = '#fff7df';
+  card.style.border = '1px solid #e6cf77';
+  card.style.borderRadius = '16px';
+  card.style.boxShadow = '0 2px 7px rgba(190,155,40,.08)';
+}
+
 
         const title = document.createElement('h3');
         title.textContent = player.rank + '. ' +
@@ -283,7 +291,12 @@ async function loadPuzzleResults() {
           const prizeText = Array.isArray(competition.prizes)
             ? competition.prizes[Number(player.rank) - 1]
             : '';
-          prize.textContent = 'Zawadi: ' + (prizeText || 'Bado haijawekwa');
+          
+prize.textContent = '🎁 ZAWADI: ' + (prizeText || 'Bado haijawekwa');
+prize.style.color = '#986600';
+prize.style.fontWeight = '800';
+prize.style.marginTop = '8px';
+
           card.appendChild(prize);
         }
         leaderboard.appendChild(card);
