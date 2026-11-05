@@ -136,6 +136,33 @@
 </main>
 
 <script>
+  
+async function loadQuizBankSummary() {
+  const total = document.getElementById('bankTotal');
+  const used = document.getElementById('bankUsed');
+  const remaining = document.getElementById('bankRemaining');
+
+  try {
+    const response = await fetch('/api/quiz/admin/bank-summary', {
+      credentials: 'same-origin',
+      cache: 'no-store'
+    });
+
+    if (!response.ok) throw new Error('Imeshindikana');
+
+    const data = await response.json();
+    total.textContent = data.total;
+    used.textContent = data.used;
+    remaining.textContent = data.remaining;
+  } catch (error) {
+    total.textContent = 'Hitilafu';
+    used.textContent = '—';
+    remaining.textContent = '—';
+  }
+}
+
+loadQuizBankSummary();
+
   const pending = [];
 
   const typeInput = document.getElementById('type');
