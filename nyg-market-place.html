@@ -93,6 +93,36 @@ margin:8px 0 18px;">
 
 </p>
 
+  
+<div style="text-align:center;margin:12px 0 22px;">
+  <button type="button" onclick="shareNYGMarket()"
+    style="background:#1684d9;color:white;border:0;
+    border-radius:9px;padding:12px 25px;
+    font-size:16px;font-weight:bold;cursor:pointer;">
+    🔗 SHARE NYG MARKET PLACE
+  </button>
+</div>
+
+<script>
+function shareNYGMarket() {
+  const url = window.location.href.split('#')[0];
+  const data = {
+    title: 'NYG MARKET PLACE',
+    text: 'Karibu NYG MARKET PLACE! Jiunge nasi.',
+    url: url
+  };
+
+  if (navigator.share) {
+    navigator.share(data).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(url)
+      .then(() => alert('Link imenakiliwa!'))
+      .catch(() => prompt('Nakili link hii:', url));
+  }
+}
+</script>
+
+
 <!-- GAMES -->
 <a href="/nyg-games.html"
    class="market-box"
