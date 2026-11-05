@@ -808,13 +808,21 @@ document.getElementById('jobForm').addEventListener('submit', async (event) => {
     contact_email: value('jobEmail'),
     deadline: value('jobDeadline')
   };
+  const editingJobId = document.getElementById('jobForm').dataset.editingId || '';
+  if (editingJobId) {
+  payload.id = Number(editingJobId);
+}
 
   button.disabled = true;
   message.textContent = 'Inahifadhi tangazo...';
 
   try {
-    const response = await fetch('/api/jobs/admin/create', {
-      method: 'POST',
+    const response = await fetch(
+  editingJobId
+    ? '/api/jobs/admin/update'
+    : '/api/jobs/admin/create',
+  {
+    method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -826,8 +834,13 @@ document.getElementById('jobForm').addEventListener('submit', async (event) => {
       throw new Error(result.error || 'Imeshindikana kuhifadhi tangazo.');
     }
 
-    message.textContent = 'Tangazo limehifadhiwa kama Draft. Namba: ' + result.job_id;
+    message.textContent = editingJobId
+  ? 'Tangazo namba ' + editingJobId + ' limehaririwa kwa mafanikio.'
+  : 'Tangazo limehifadhiwa kama Draft. Namba: ' + result.job_id;
     document.getElementById('jobForm').reset();
+    document.getElementById('jobForm').dataset.editingId = '';
+document.getElementById('saveJobButton').textContent = 'HIFADHI TANGAZO KAMA DRAFT';
+await loadJobsAdminList();
 
   } catch (error) {
     message.textContent = error.message || 'Hitilafu imetokea.';
@@ -878,7 +891,32 @@ async function loadJobsAdminList() {
       status.textContent = 'HALI: ' +
         (job.status === 'published' ? 'PUBLISHED' : 'DRAFT');
 
+    const editButton = document.createElement('button');
+editButton.type = 'button';
+editButton.textContent = 'EDIT';
+editButton.style.background = '#2563eb';
+editButton.style.marginTop = '10px';
+
+editButton.addEventListener('click', () => {
+  document.getElementById('jobForm').dataset.editingId = String(job.id);
+document.getElementById('saveJobButton').textContent = 'HIFADHI MAREKEBISHO';
+  document.getElementById('jobTitle').value = job.title || '';
+  document.getElementById('jobCompany').value = job.company || '';
+  document.getElementById('jobLocation').value = job.location || '';
+  document.getElementById('jobDescription').value = job.description || '';
+  document.getElementById('jobRequirements').value = job.requirements || '';
+  document.getElementById('jobLink').value = job.application_link || '';
+  document.getElementById('jobEmail').value = job.contact_email || '';
+  document.getElementById('jobDeadline').value = job.deadline || '';
+
+  document.getElementById('jobForm').scrollIntoView({
+    behavior: 'smooth'
+  });
+});
+
+
       card.append(title, details, status);
+      card.appendChild(editButton);
       list.appendChild(card);
     }
 
