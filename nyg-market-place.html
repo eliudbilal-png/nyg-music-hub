@@ -140,6 +140,41 @@ margin:8px 0 18px;">
   </a>
 
 </main>
+  
+<script>
+async function updateJobsCount() {
+  const badge = document.getElementById('newJobsCount');
+  if (!badge) return;
+
+  try {
+    const response = await fetch('/api/jobs', {
+      cache: 'no-store'
+    });
+
+    if (!response.ok) throw new Error('API error');
+
+    const data = await response.json();
+
+    const jobs = Array.isArray(data)
+      ? data
+      : Array.isArray(data.jobs)
+        ? data.jobs
+        : [];
+
+    const published = jobs.filter(job =>
+      job.status === 'published'
+    );
+
+    badge.textContent = published.length + ' mpya';
+  } catch (error) {
+    console.error('Jobs count error:', error);
+    badge.textContent = '—';
+  }
+}
+
+updateJobsCount();
+</script>
+
 
 </body>
 </html>
