@@ -266,6 +266,9 @@ loadQuizBankSummary();
         { questions: pending }
       );
       showMessage(result.message || 'Maswali yamehifadhiwa kwenye benki.');
+      
+await loadQuizBankSummary();
+
       pending.length = 0;
       document.getElementById('pending').replaceChildren();
       document.getElementById('count').textContent = 'Maswali tayari: 0';
