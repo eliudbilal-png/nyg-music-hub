@@ -68,6 +68,35 @@
   <main>
     <h1>GAMES &amp; REFRESHMENT</h1>
 
+    
+<div style="text-align:center;margin:15px 0 25px;">
+  <button type="button" onclick="shareNYGGames()"
+    style="background:#1684d9;color:white;border:0;
+    border-radius:9px;padding:12px 25px;
+    font-size:16px;font-weight:bold;cursor:pointer;">
+    🔗 SHARE GAMES & REFRESHMENT
+  </button>
+</div>
+
+<script>
+function shareNYGGames() {
+  const url = window.location.href.split('#')[0];
+  const data = {
+    title: 'NYG GAMES & REFRESHMENT',
+    text: 'Karibu NYG GAMES! Cheza Quiz, Puzzle na Darts.',
+    url: url
+  };
+
+  if (navigator.share) {
+    navigator.share(data).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(url)
+      .then(() => alert('Link imenakiliwa!'))
+      .catch(() => prompt('Nakili link hii:', url));
+  }
+}
+</script>
+
     <a class="game-box" href="/nyg-quiz.html">
       <h2>1. NYG Quiz</h2>
       <p>Bonyeza hapa kufungua quiz.</p>
