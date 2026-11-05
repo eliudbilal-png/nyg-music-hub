@@ -2627,6 +2627,93 @@ if (path === '/api/quiz/admin/bank-summary' && method === 'GET') {
       }
     }
 
+     
+    // NYG JOBS - ADMIN UPDATE JOB
+    if (path === '/api/jobs/admin/update' && method === 'POST') {
+      if (!env.JOBS_DB) {
+        return reply({ error: 'Jobs database haijaunganishwa.' }, 503);
+      }
+
+      try {
+        const data = await request.json();
+        const id = Number(data.id);
+        const title = String(data.title || '').trim();
+        const company = String(data.company || '').trim();
+        const location = String(data.location || '').trim();
+        const description = String(data.description || '').trim();
+        const requirements = String(data.requirements || '').trim();
+        const applicationLink = String(data.application_link || '').trim();
+        const contactEmail = String(data.contact_email || '').trim();
+        const deadline = String(data.deadline || '').trim();
+
+        if (!Number.isSafeInteger(id) || id < 1) {
+          return reply({ error: 'Namba ya tangazo si sahihi.' }, 400);
+        }
+
+        if (!title || !company || !description) {
+          return reply({ error: 'Jina la kazi, kampuni na maelezo vinahitajika.' }, 400);
+        }
+
+        if (title.length > 200 || company.length > 200 ||
+            description.length > 10000) {
+          return reply({ error: 'Maandishi yamezidi kiwango.' }, 400);
+        }
+
+        if (applicationLink) {
+          try {
+            const link = new URL(applicationLink);
+            if (!['https:', 'http:'].includes(link.protocol)) {
+              throw new Error('Invalid protocol');
+            }
+          } catch {
+            return reply({ error: 'Link ya maombi si sahihi.' }, 400);
+          }
+        }
+
+        if (contactEmail &&
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+          return reply({ error: 'Email si sahihi.' }, 400);
+        }
+
+        const existing = await env.JOBS_DB.prepare(
+          'SELECT id FROM jobs WHERE id = ?'
+        ).bind(id).first();
+
+        if (!existing) {
+          return reply({ error: 'Tangazo halijapatikana.' }, 404);
+        }
+
+        await env.JOBS_DB.prepare(`
+          UPDATE jobs SET
+            title = ?,
+            company = ?,
+            location = ?,
+            description = ?,
+            requirements = ?,
+            application_link = ?,
+            contact_email = ?,
+            deadline = ?,
+            updated_at = datetime('now')
+          WHERE id = ?
+        `).bind(
+          title, company, location || null, description,
+          requirements || null, applicationLink || null,
+          contactEmail || null, deadline || null, id
+        ).run();
+
+        return reply({
+          success: true,
+          job_id: id,
+          message: 'Tangazo limehaririwa kwa mafanikio.'
+        });
+
+      } catch (error) {
+        console.error('NYG Jobs update error:', error);
+        return reply({ error: 'Imeshindikana kuhariri tangazo.' }, 500);
+      }
+    }
+ 
+
   // NYG SHUHUDA - ADMIN AUDIO UPLOAD
 if (path === '/api/testimonies/admin/upload' &&
     method === 'POST') {
