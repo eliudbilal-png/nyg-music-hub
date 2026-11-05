@@ -161,9 +161,9 @@ async function updateJobsCount() {
         ? data.jobs
         : [];
 
-    const published = jobs.filter(job =>
-      job.status === 'published'
-    );
+    
+const published = jobs;
+
 
     badge.textContent = published.length + ' mpya';
   } catch (error) {
