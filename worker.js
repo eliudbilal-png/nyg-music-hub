@@ -2754,6 +2754,61 @@ if (path === '/api/quiz/admin/bank-summary' && method === 'GET') {
       }
     }
 
+    // NYG JOBS - ADMIN PUBLISH / UNPUBLISH
+    if (path === '/api/jobs/admin/status' && method === 'POST') {
+      if (!env.JOBS_DB) {
+        return reply({ error: 'Jobs database haijaunganishwa.' }, 503);
+      }
+
+      try {
+        const data = await request.json();
+        const id = Number(data.id);
+        const status = String(data.status || '').trim();
+
+        if (!Number.isSafeInteger(id) || id < 1) {
+          return reply({ error: 'Namba ya tangazo si sahihi.' }, 400);
+        }
+
+        if (!['draft', 'published'].includes(status)) {
+          return reply({ error: 'Hali ya tangazo si sahihi.' }, 400);
+        }
+
+        const existing = await env.JOBS_DB.prepare(
+          'SELECT id FROM jobs WHERE id = ?'
+        ).bind(id).first();
+
+        if (!existing) {
+          return reply({ error: 'Tangazo halijapatikana.' }, 404);
+        }
+
+        await env.JOBS_DB.prepare(`
+          UPDATE jobs
+          SET status = ?,
+              published_at = CASE
+                WHEN ? = 'published' THEN datetime('now')
+                ELSE NULL
+              END,
+              updated_at = datetime('now')
+          WHERE id = ?
+        `).bind(status, status, id).run();
+
+        return reply({
+          success: true,
+          job_id: id,
+          status,
+          message: status === 'published'
+            ? 'Tangazo limechapishwa kwa mafanikio.'
+            : 'Tangazo limerudishwa kwenye Draft.'
+        });
+
+      } catch (error) {
+        console.error('NYG Jobs status error:', error);
+        return reply({
+          error: 'Imeshindikana kubadilisha hali ya tangazo.'
+        }, 500);
+      }
+    }
+
   // NYG SHUHUDA - ADMIN AUDIO UPLOAD
 if (path === '/api/testimonies/admin/upload' &&
     method === 'POST') {
