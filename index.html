@@ -1237,6 +1237,33 @@ container.appendChild(card);
   </div>
 </section>
   <div style="text-align:center; margin:20px 0;">
+ 
+<div id="nygCentralAdminLink"
+     style="display:none;text-align:center;margin:20px 0;">
+  <a href="/nyg-admin.html"
+     style="color:#65baff;font-weight:bold;font-size:16px;">
+    CENTRAL ADMIN
+  </a>
+</div>
+
+<script>
+(async function () {
+  try {
+    const response = await fetch('/api/testimonies/admin/session', {
+      credentials: 'include',
+      cache: 'no-store'
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    if (data.authenticated === true || data.ok === true) {
+      document.getElementById('nygCentralAdminLink').style.display = 'block';
+    }
+  } catch (error) {
+    console.error('Admin session check:', error);
+  }
+})();
+</script>
+   
 <a href="#privacy-policy" class="page-link" style="color:#5dade2; font-size:14px;">
     Privacy Policy
   </a>
