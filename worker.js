@@ -2173,6 +2173,38 @@ if (path.startsWith('/api/testimonies/audio/') &&
       }
 
       // NYG QUIZ - ADMIN SETUP
+      
+if (path === '/api/quiz/admin/bank-summary' && method === 'GET') {
+  if (!env.QUIZ_DB) {
+    return reply({ error: 'Quiz database haijaunganishwa.' }, 503);
+  }
+
+  try {
+    const result = await env.QUIZ_DB.prepare(`
+      SELECT
+        COUNT(*) AS total,
+        COALESCE(SUM(CASE WHEN EXISTS (
+          SELECT 1 FROM quiz_questions q
+          WHERE q.bank_question_id = b.id
+        ) THEN 1 ELSE 0 END), 0) AS used
+      FROM quiz_question_bank b
+      WHERE b.is_active = 1
+    `).first();
+
+    const total = Number(result?.total || 0);
+    const used = Number(result?.used || 0);
+
+    return reply({
+      total,
+      used,
+      remaining: total - used
+    });
+  } catch (error) {
+    console.error('Quiz bank summary error:', error);
+    return reply({ error: 'Imeshindikana kusoma benki ya maswali.' }, 500);
+  }
+}
+
           if (path === '/api/quiz/admin/question-bank' && method === 'POST') {
       if (!env.QUIZ_DB) {
         return reply({ error: 'Quiz database haijaunganishwa.' }, 503);
