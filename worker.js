@@ -2714,6 +2714,46 @@ if (path === '/api/quiz/admin/bank-summary' && method === 'GET') {
     }
  
 
+    // NYG JOBS - ADMIN DELETE JOB
+    if (path === '/api/jobs/admin/delete' && method === 'POST') {
+      if (!env.JOBS_DB) {
+        return reply({ error: 'Jobs database haijaunganishwa.' }, 503);
+      }
+
+      try {
+        const data = await request.json();
+        const id = Number(data.id);
+
+        if (!Number.isSafeInteger(id) || id < 1) {
+          return reply({ error: 'Namba ya tangazo si sahihi.' }, 400);
+        }
+
+        const existing = await env.JOBS_DB.prepare(
+          'SELECT id FROM jobs WHERE id = ?'
+        ).bind(id).first();
+
+        if (!existing) {
+          return reply({ error: 'Tangazo halijapatikana.' }, 404);
+        }
+
+        await env.JOBS_DB.prepare(
+          'DELETE FROM jobs WHERE id = ?'
+        ).bind(id).run();
+
+        return reply({
+          success: true,
+          job_id: id,
+          message: 'Tangazo limefutwa kwa mafanikio.'
+        });
+
+      } catch (error) {
+        console.error('NYG Jobs delete error:', error);
+        return reply({
+          error: 'Imeshindikana kufuta tangazo.'
+        }, 500);
+      }
+    }
+
   // NYG SHUHUDA - ADMIN AUDIO UPLOAD
 if (path === '/api/testimonies/admin/upload' &&
     method === 'POST') {
