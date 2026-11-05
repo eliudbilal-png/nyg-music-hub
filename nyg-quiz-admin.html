@@ -461,6 +461,60 @@ await loadQuizBankSummary();
       }
     });
 
+async function refreshQuizCompetitions(selectedId = '') {
+  const response = await fetch('/api/quiz/admin/competitions', {
+    credentials: 'same-origin',
+    cache: 'no-store'
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Imeshindikana kusoma mashindano.');
+  }
+
+  const competitions = data.competitions || [];
+  for (const id of ['competitionId', 'prizeCompetitionId']) {
+    const input = document.getElementById(id);
+    if (input && selectedId) input.value = selectedId;
+  }
+  return competitions;
+}
+
+document.getElementById('createCompetition').addEventListener('click', async () => {
+  const title = document.getElementById('newCompetitionTitle').value.trim();
+  const startsAt = document.getElementById('newCompetitionStart').value;
+  const endsAt = document.getElementById('newCompetitionEnd').value;
+
+  if (!title || !startsAt || !endsAt) {
+    showMessage('Jaza jina na tarehe zote za mashindano.', true);
+    return;
+  }
+
+  try {
+    const result = await postJson('/api/quiz/admin/competition', {
+      title,
+      starts_at: new Date(startsAt).toISOString(),
+      ends_at: new Date(endsAt).toISOString()
+    });
+    await refreshQuizCompetitions(result.id);
+    showMessage('Mashindano yameundwa. Competition ID: ' + result.id);
+  } catch (error) {
+    showMessage(error.message, true);
+  }
+});
+
+document.getElementById('refreshCompetitions').addEventListener('click', async () => {
+  try {
+    const competitions = await refreshQuizCompetitions();
+    showMessage(
+      competitions.length
+        ? competitions.map(c => c.title + ' — ' + c.id).join('\n')
+        : 'Bado hakuna mashindano yaliyoundwa.'
+    );
+  } catch (error) {
+    showMessage(error.message, true);
+  }
+});
+
 </script>
 </body>
 </html>
