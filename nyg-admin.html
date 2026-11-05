@@ -917,6 +917,80 @@ document.getElementById('saveJobButton').textContent = 'HIFADHI MAREKEBISHO';
 
       card.append(title, details, status);
       card.appendChild(editButton);
+      
+      // PUBLISH / UNPUBLISH
+      const publishButton = document.createElement('button');
+      publishButton.type = 'button';
+      publishButton.textContent = job.status === 'published'
+        ? 'UNPUBLISH' : 'PUBLISH';
+      publishButton.style.background = '#15803d';
+      publishButton.style.margin = '10px 8px';
+
+      publishButton.addEventListener('click', async () => {
+        const nextStatus = job.status === 'published'
+          ? 'draft' : 'published';
+
+        if (!confirm('Unathibitisha kubadilisha hali ya tangazo?')) return;
+
+        publishButton.disabled = true;
+        try {
+          const response = await fetch('/api/jobs/admin/status', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: job.id,
+              status: nextStatus
+            })
+          });
+
+          const result = await response.json();
+          if (!response.ok || result.success !== true) {
+            throw new Error(result.error || 'Imeshindikana.');
+          }
+
+          await loadJobsAdminList();
+        } catch (error) {
+          alert(error.message);
+          publishButton.disabled = false;
+        }
+      });
+
+      card.appendChild(publishButton);
+
+      // DELETE
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.textContent = 'DELETE';
+      deleteButton.style.background = '#b91c1c';
+      deleteButton.style.marginTop = '10px';
+
+      deleteButton.addEventListener('click', async () => {
+        if (!confirm('UNATAKA KUFUTA KABISA TANGAZO #' + job.id + '?')) return;
+
+        deleteButton.disabled = true;
+        try {
+          const response = await fetch('/api/jobs/admin/delete', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: job.id })
+          });
+
+          const result = await response.json();
+          if (!response.ok || result.success !== true) {
+            throw new Error(result.error || 'Imeshindikana kufuta.');
+          }
+
+          await loadJobsAdminList();
+        } catch (error) {
+          alert(error.message);
+          deleteButton.disabled = false;
+        }
+      });
+
+      card.appendChild(deleteButton);
+
       list.appendChild(card);
     }
 
