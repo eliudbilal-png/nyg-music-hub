@@ -72,10 +72,12 @@
   font-weight: 700;
 }
 
-.ranking li:nth-child(-n+3)::after {
+
+.ranking.final-results li:nth-child(-n+3)::after {
   content: ' 🎁 ZAWADI';
   color: #a66b00;
 }
+
     .muted { color: #687386; }
     a {
       display: block;
@@ -195,6 +197,10 @@ async function loadQuizResults() {
 
       const ranking = document.createElement('ol');
       ranking.className = 'ranking';
+
+if (new Date(competition.ends_at).getTime() <= Date.now()) {
+  ranking.classList.add('final-results');
+}
 
       for (const player of competition.leaderboard || []) {
         const item = document.createElement('li');
