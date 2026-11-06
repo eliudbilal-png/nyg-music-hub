@@ -644,13 +644,16 @@ if (dartsResponse) return dartsResponse;
             LEFT JOIN quiz_days d ON d.competition_id = c.id
 LEFT JOIN quiz_questions q ON q.day_id = d.id
 LEFT JOIN quiz_answers a ON a.question_id = q.id
-WHERE c.starts_at <= ?
+
+WHERE c.starts_at <= ? AND c.ends_at > ?
+
             GROUP BY c.id, a.member_id
           )
           SELECT *
 FROM scores
 ORDER BY ends_at DESC, points DESC, correct_count DESC
-        `).bind(new Date().toISOString()).all();
+        
+`).bind(new Date().toISOString(), new Date().toISOString()).all();
 
         const groups = new Map();
 
