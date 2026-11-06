@@ -769,6 +769,84 @@ if (row.member_id) {
           if (!day) {
             return reply({ state: 'closed', questions: [] });
           }
+          
+          // NYG QUIZ: Automatic daily question allocation.
+          // Questions with the fewest previous uses go first.
+          // Each day receives 10 different questions.
+          
+          // NYG QUIZ: gawa maswali 10 mara moja kwa kila siku.
+          // INSERT moja yenye kinga ya NOT EXISTS.
+          const availableBank = await env.QUIZ_DB.prepare(`
+            SELECT COUNT(*) AS total
+            FROM quiz_question_bank
+            WHERE is_active = 1
+          `).first();
+
+          if (Number(availableBank?.total || 0) < 10) {
+            return reply({
+              state: 'closed',
+              questions: [],
+              error: 'Benki inahitaji angalau maswali 10.'
+            }, 409);
+          }
+
+          await env.QUIZ_DB.prepare(`
+            INSERT INTO quiz_questions
+              (day_id, position, question_type, prompt,
+               option_a, option_b, option_c, option_d,
+               correct_answer, points, bank_question_id)
+            SELECT
+              ?,
+              ROW_NUMBER() OVER (ORDER BY picked.sort_order),
+              picked.question_type,
+              picked.prompt,
+              picked.option_a,
+              picked.option_b,
+              picked.option_c,
+              picked.option_d,
+              picked.correct_answer,
+              2,
+              picked.id
+            FROM (
+              SELECT b.*, random() AS sort_order
+              FROM quiz_question_bank b
+              LEFT JOIN (
+                SELECT bank_question_id,
+                       COUNT(*) AS times_used
+                FROM quiz_questions
+                WHERE bank_question_id IS NOT NULL
+                GROUP BY bank_question_id
+              ) usage ON usage.bank_question_id = b.id
+              WHERE b.is_active = 1
+              ORDER BY COALESCE(usage.times_used, 0) ASC,
+                       sort_order
+              LIMIT 10
+            ) AS picked
+            WHERE NOT EXISTS (
+              SELECT 1
+              FROM quiz_questions
+              WHERE day_id = ?
+            )
+          `).bind(day.day_id, day.day_id).run();
+
+
+          
+          const dailyQuestionCount = await env.QUIZ_DB.prepare(`
+            SELECT COUNT(*) AS total
+            FROM quiz_questions
+            WHERE day_id = ?
+          `).bind(day.day_id).first();
+
+          if (Number(dailyQuestionCount?.total || 0) !== 10) {
+            return reply({
+              error: 'Maswali 10 ya siku hii hayajakamilika. Jaribu tena.',
+              state: 'closed',
+              questions: []
+            }, 409);
+          }
+
+
+
 
           const result = await env.QUIZ_DB.prepare(`
             SELECT q.id, q.position, q.question_type, q.prompt,
@@ -2383,6 +2461,7 @@ if (path === '/api/quiz/admin/bank-summary' && method === 'GET') {
       return reply({ competitions: result.results || [] });
     }
 
+
     if (path === '/api/quiz/admin/competition' && method === 'POST') {
       if (!env.QUIZ_DB) {
         return reply({ error: 'Quiz database haijaunganishwa.' }, 503);
@@ -2394,31 +2473,90 @@ if (path === '/api/quiz/admin/bank-summary' && method === 'GET') {
         const startMs = Date.parse(data.starts_at);
         const endMs = Date.parse(data.ends_at);
 
-        if (title.length < 2 || title.length > 120 ||
-            !Number.isFinite(startMs) || !Number.isFinite(endMs) ||
-            endMs <= startMs) {
-          return reply({ error: 'Kagua jina na muda wa mashindano.' }, 400);
+        if (
+          title.length < 2 || title.length > 120 ||
+          !Number.isFinite(startMs) ||
+          !Number.isFinite(endMs) ||
+          endMs <= startMs
+        ) {
+          return reply({
+            error: 'Kagua jina na muda wa mashindano.'
+          }, 400);
+        }
+
+        // Tanzania: UTC +03:00
+        const HOUR = 60 * 60 * 1000;
+        const DAY = 24 * HOUR;
+        const EAT_OFFSET = 3 * HOUR;
+
+        const firstDate = Math.floor((startMs + EAT_OFFSET) / DAY);
+        const lastDate = Math.floor((endMs - 1 + EAT_OFFSET) / DAY);
+        const numberOfDays = lastDate - firstDate + 1;
+
+        if (numberOfDays < 1 || numberOfDays > 31) {
+          return reply({
+            error: 'Mashindano yawe na siku 1 hadi 31.'
+          }, 400);
         }
 
         const id = crypto.randomUUID();
-        await env.QUIZ_DB.prepare(`
-          INSERT INTO quiz_competitions
-            (id, title, status, starts_at, ends_at,
-             questions_per_day, points_per_question)
-          VALUES (?, ?, 'scheduled', ?, ?, 10, 2)
-        `).bind(
-          id,
-          title,
-          new Date(startMs).toISOString(),
-          new Date(endMs).toISOString()
-        ).run();
+        const statements = [];
 
-        return reply({ id, message: 'Mashindano yamehifadhiwa.' }, 201);
+        statements.push(
+          env.QUIZ_DB.prepare(`
+            INSERT INTO quiz_competitions
+              (id, title, status, starts_at, ends_at,
+               questions_per_day, points_per_question)
+            VALUES (?, ?, 'scheduled', ?, ?, 10, 2)
+          `).bind(
+            id,
+            title,
+            new Date(startMs).toISOString(),
+            new Date(endMs).toISOString()
+          )
+        );
+
+        for (let i = 0; i < numberOfDays; i++) {
+          const dateIndex = firstDate + i;
+          const midnightStart = dateIndex * DAY - EAT_OFFSET;
+          const midnightEnd = (dateIndex + 1) * DAY - EAT_OFFSET;
+
+          const opensAt = Math.max(startMs, midnightStart);
+          const closesAt = Math.min(endMs, midnightEnd);
+
+          statements.push(
+            env.QUIZ_DB.prepare(`
+              INSERT INTO quiz_days
+                (competition_id, day_number,
+                 opens_at, closes_at, status)
+              VALUES (?, ?, ?, ?, 'scheduled')
+            `).bind(
+              id,
+              i + 1,
+              new Date(opensAt).toISOString(),
+              new Date(closesAt).toISOString()
+            )
+          );
+        }
+
+        // D1 batch: all statements succeed or roll back.
+        await env.QUIZ_DB.batch(statements);
+
+        return reply({
+          id,
+          days_created: numberOfDays,
+          questions_per_day: 10,
+          message: 'Mashindano na ratiba ya siku zote vimehifadhiwa.'
+        }, 201);
+
       } catch (error) {
         console.error('NYG quiz competition create error:', error);
-        return reply({ error: 'Imeshindikana kuhifadhi mashindano.' }, 500);
+        return reply({
+          error: 'Imeshindikana kuunda mashindano.'
+        }, 500);
       }
     }
+
 
     if (path === '/api/quiz/admin/day' && method === 'POST') {
       if (!env.QUIZ_DB) {
