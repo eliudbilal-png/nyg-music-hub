@@ -354,26 +354,46 @@ prize.style.marginTop = '8px';
       'Imeshindikana kupakia matokeo ya game.';
   }
 }  
-   async function loadDartsResults() {
+   
+async function loadDartsResults() {
   const status = document.getElementById('dartsResultsStatus');
   const previous = document.getElementById('dartsPreviousWinners');
   const current = document.getElementById('dartsCurrentLeaders');
 
-  try {
-    const response = await fetch('/api/darts/leaderboard', {
-      cache: 'no-store'
-    });
-    const data = await response.json();
+  const prizeAmounts = { 1: 3000, 2: 2000, 3: 1000 };
+  const whatsappNumber = '255755498731';
 
-    if (!response.ok) {
+  try {
+    const [rankResponse, memberResponse] = await Promise.all([
+      fetch('/api/darts/leaderboard', {
+        cache: 'no-store',
+        credentials: 'same-origin'
+      }),
+      fetch('/api/members/me', {
+        cache: 'no-store',
+        credentials: 'same-origin'
+      })
+    ]);
+
+    const data = await rankResponse.json();
+
+    if (!rankResponse.ok) {
       throw new Error(data.error || 'Imeshindikana kupata matokeo ya Darts.');
     }
 
-    const render = (element, rows, emptyMessage) => {
+    const memberData = memberResponse.ok
+      ? await memberResponse.json()
+      : {};
+
+    const member = memberData.member || null;
+
+    function render(element, rows, isPrevious) {
       element.replaceChildren();
 
       if (!rows.length) {
-        element.textContent = emptyMessage;
+        element.textContent = isPrevious
+          ? 'Bado hakuna washindi wa wiki iliyopita.'
+          : 'Bado hakuna alama wiki hii. Anza kucheza!';
         return;
       }
 
@@ -382,34 +402,110 @@ prize.style.marginTop = '8px';
 
       rows.forEach(row => {
         const item = document.createElement('li');
-        item.textContent =
-          row.rank + '. ' + row.full_name + ' — ' + row.points + ' pointi';
+        const rank = Number(row.rank);
+        const amount = prizeAmounts[rank] || 0;
+        const days = Number(row.days_played || 0);
+
+        const heading = document.createElement('div');
+        heading.textContent =
+          rank + '. ' + row.full_name +
+          ' — ' + row.points + ' pointi';
+
+        item.appendChild(heading);
+
+        if (isPrevious && amount > 0) {
+          const prize = document.createElement('p');
+          prize.style.fontWeight = '700';
+          prize.style.margin = '8px 0';
+
+          prize.textContent =
+            '🎁 ZAWADI: Bundle ya TSh ' +
+            amount.toLocaleString('en-US');
+
+          item.appendChild(prize);
+
+          const eligible =
+            row.prize_eligible === true &&
+            days >= 3;
+
+          const isOwner =
+            member &&
+            row.member_id &&
+            String(member.id) === String(row.member_id);
+
+          if (!eligible) {
+            const notice = document.createElement('p');
+            notice.style.color = '#b45309';
+            notice.textContent =
+              'Hongera kwa nafasi yako! Umeshiriki siku ' +
+              days +
+              ' kati ya siku 3 zinazohitajika. ' +
+              'Hujakidhi masharti ya kupokea zawadi.';
+
+            item.appendChild(notice);
+          } else if (isOwner) {
+            const message = [
+              'NYG DARTS - DAI ZAWADI',
+              'Jina: ' + member.full_name,
+              'Namba ya mwanachama: ' + (member.member_code || ''),
+              'Nafasi ya ushindi: ' + rank,
+              'Pointi: ' + row.points,
+              'Zawadi: Bundle ya TSh ' + amount,
+              'Wiki: ' + (data.previous_week?.week_start || ''),
+              'Naomba kuthibitishiwa ushindi na kupokea zawadi yangu.'
+            ].join('\n');
+
+            const link = document.createElement('a');
+            link.href =
+              'https://wa.me/' + whatsappNumber +
+              '?text=' + encodeURIComponent(message);
+
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = 'DAI ZAWADI YAKO WHATSAPP';
+
+            link.style.display = 'block';
+            link.style.background = '#16803c';
+            link.style.color = '#ffffff';
+            link.style.padding = '13px';
+            link.style.marginTop = '10px';
+            link.style.borderRadius = '10px';
+            link.style.textAlign = 'center';
+            link.style.fontWeight = '800';
+            link.style.textDecoration = 'none';
+
+            item.appendChild(link);
+          }
+        }
+
         list.appendChild(item);
       });
 
       element.appendChild(list);
-    };
+    }
 
     render(
       previous,
       data.previous_week?.winners || [],
-      'Washindi wataonekana baada ya tangazo la Jumapili saa 3:00 asubuhi.'
+      true
     );
 
     render(
       current,
       data.leaderboard || [],
-      'Bado hakuna alama wiki hii. Anza kucheza!'
+      false
     );
 
     status.textContent =
-      'Matokeo mapya hutangazwa kila Jumapili saa 3:00 asubuhi (saa za Tanzania).';
+      'Matokeo rasmi hutangazwa kila Jumapili saa 3:00 asubuhi (Tanzania). ' +
+      'Zawadi hutolewa kwa TOP 3 waliocheza angalau siku 3 tofauti.';
+
   } catch (error) {
     status.textContent =
-      error.message || 'Imeshindikana kupakia matokeo ya NYG Darts.';
+      error.message || 'Imeshindikana kupakia matokeo ya NYG DARTS.';
   }
-} 
-    async function loadMember() {
+}
+async function loadMember() {
       const status = document.getElementById('status');
 
       try {
