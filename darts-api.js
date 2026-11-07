@@ -982,11 +982,30 @@ export async function handleDartsApi(
 
       const match=await getMatch(db,matchId);
 
+
       if (!match) {
+        await db.batch([
+          db.prepare(`
+            DELETE FROM nyg_darts_player_locks
+            WHERE match_id = ?
+          `).bind(matchId),
+
+          db.prepare(`
+            UPDATE nyg_darts_invites
+            SET status = 'pending',
+                match_id = NULL,
+                updated_at = ?
+            WHERE id = ?
+              AND match_id = ?
+              AND status = 'accepted'
+          `).bind(Date.now(), id, matchId)
+        ]);
+
         return reply({
-          error: "Mechi haijaundwa. Tafadhali tuma mwaliko mpya."
+          error: "Mechi haijaundwa. Tafadhali jaribu tena."
         }, 409);
       }
+
 
       return reply({
         success:true,
