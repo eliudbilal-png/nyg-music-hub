@@ -289,19 +289,81 @@ async function updateMatchClock(db, initialRow) {
   return row;
 }
 
-async function leaderboard(db, start) {
-  const result = await db.prepare(
-    "SELECT s.member_id,COALESCE(m.full_name,'Mwanachama') AS full_name,SUM(s.points) AS points,COUNT(*) AS matches_played,MAX(s.points) AS best_match FROM nyg_darts_scores s LEFT JOIN members m ON m.id=s.member_id WHERE s.week_start=? GROUP BY s.member_id,m.full_name ORDER BY points DESC,matches_played DESC,full_name COLLATE NOCASE ASC LIMIT 5"
-  ).bind(start).all();
 
-  return (result.results || []).map((row, index) => ({
-    rank: index + 1,
-    full_name: row.full_name,
-    points: Number(row.points || 0),
-    matches_played: Number(row.matches_played || 0),
-    best_match: Number(row.best_match || 0)
-  }));
+const DARTS_PRIZES = {
+  1: 3000,
+  2: 2000,
+  3: 1000
+};
+
+const DARTS_MIN_DAYS = 3;
+
+async function leaderboard(db, start) {
+  const result = await db.prepare(`
+    SELECT
+      s.member_id,
+      COALESCE(m.full_name, 'Mwanachama') AS full_name,
+      SUM(s.points) AS points,
+      COUNT(*) AS matches_played,
+      MAX(s.points) AS best_match,
+      COUNT(DISTINCT DATE(
+        s.created_at,
+        '+3 hours'
+      )) AS days_played
+    FROM nyg_darts_scores s
+    LEFT JOIN members m
+      ON m.id = s.member_id
+    WHERE s.week_start = ?
+    GROUP BY s.member_id, m.full_name
+    ORDER BY
+      points DESC,
+      matches_played DESC,
+      full_name COLLATE NOCASE ASC,
+      s.member_id ASC
+    LIMIT 5
+  `).bind(start).all();
+
+  return (result.results || []).map((row, index) => {
+    const rank = index + 1;
+    const daysPlayed = Number(row.days_played || 0);
+    const prizeAmount = DARTS_PRIZES[rank] || 0;
+
+    const eligible =
+      rank <= 3 &&
+      daysPlayed >= DARTS_MIN_DAYS;
+
+    return {
+      rank,
+      full_name: row.full_name,
+      points: Number(row.points || 0),
+      matches_played: Number(row.matches_played || 0),
+      best_match: Number(row.best_match || 0),
+
+      days_played: daysPlayed,
+      required_days: DARTS_MIN_DAYS,
+
+      prize_amount: prizeAmount,
+      prize_type: prizeAmount > 0
+        ? "DATA BUNDLE"
+        : null,
+
+      prize_eligible: eligible,
+
+      prize_status: rank > 3
+        ? "NO_PRIZE"
+        : eligible
+          ? "ELIGIBLE"
+          : "NOT_ELIGIBLE",
+
+      prize_message: rank > 3
+        ? "Hongera kwa kushiriki NYG DARTS."
+        : eligible
+          ? "Hongera! Umekidhi masharti ya zawadi."
+          : "Hongera kwa nafasi yako! Hujakidhi sharti la kucheza angalau siku 3 tofauti. Huna haki ya kudai zawadi wiki hii."
+    };
+  });
 }
+
 
 async function finishMatch(db, row, p1, p2, t1, t2, now) {
   const winner = p1 === p2 ? null : (p1 > p2 ? row.player1_id : row.player2_id);
