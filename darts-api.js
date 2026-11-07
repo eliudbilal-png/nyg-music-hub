@@ -971,7 +971,24 @@ export async function handleDartsApi(
             WHERE id = ?
               AND receiver_id = ?
               AND status = 'pending'
-          `).bind(matchId, now, id, memberId)
+                    `).bind(matchId, now, id, memberId),
+    
+          db.prepare(`
+            INSERT INTO nyg_darts_player_locks
+              (member_id, match_id, created_at)
+            SELECT ?, NULL, ?
+            WHERE NOT EXISTS (
+              SELECT 1 FROM nyg_darts_matches
+              WHERE id = ?
+                AND status = 'open'
+                AND player1_id = ?
+                AND player2_id = ?
+            )
+          `).bind(
+            crypto.randomUUID(), now,
+            matchId, invite.sender_id, memberId
+          )
+      
         ]);
       } catch (error) {
         return reply({
