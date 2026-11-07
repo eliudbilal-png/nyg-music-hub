@@ -417,16 +417,15 @@ async function loadDartsResults() {
           const prize = document.createElement('p');
           prize.style.fontWeight = '700';
           prize.style.margin = '8px 0';
-
-          prize.textContent =
-            '🎁 ZAWADI: Bundle ya TSh ' +
-            amount.toLocaleString('en-US');
-
-          item.appendChild(prize);
-
-          const eligible =
+const eligible =
             row.prize_eligible === true &&
             days >= 3;
+          
+prize.textContent = eligible
+  ? '🎁 ZAWADI: Bundle ya TSh ' + amount.toLocaleString('en-US')
+  : '🎁 ZAWADI: Hujakidhi masharti';
+
+          item.appendChild(prize);
 
           const isOwner =
             member &&
