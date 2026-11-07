@@ -333,7 +333,8 @@ async function leaderboard(db, start) {
       daysPlayed >= DARTS_MIN_DAYS;
 
     return {
-      rank,
+      rank,    
+member_id: row.member_id,
       full_name: row.full_name,
       points: Number(row.points || 0),
       matches_played: Number(row.matches_played || 0),
