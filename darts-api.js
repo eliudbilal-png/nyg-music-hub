@@ -314,6 +314,7 @@ async function leaderboard(db, start) {
     LEFT JOIN members m
       ON m.id = s.member_id
     WHERE s.week_start = ?
+  AND s.opponent_type = 'computer'
     GROUP BY s.member_id, m.full_name
     ORDER BY
       points DESC,
