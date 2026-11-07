@@ -914,11 +914,22 @@ export async function handleDartsApi(
           ),
 
 
+          
           db.prepare(`
             INSERT INTO nyg_darts_player_locks
               (member_id, match_id, created_at)
-            VALUES (?, ?, ?)
-          `).bind(memberId, matchId, now),
+            SELECT ?, ?, ?
+            WHERE EXISTS (
+              SELECT 1 FROM nyg_darts_invites
+              WHERE id = ?
+                AND receiver_id = ?
+                AND status = 'pending'
+            )
+          `).bind(
+            memberId, matchId, now,
+            id, memberId
+          ),
+
 
           db.prepare(`
             INSERT INTO nyg_darts_matches (
