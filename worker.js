@@ -3537,5 +3537,4 @@ if (path === '/api/testimonies/admin/delete-comment' &&
   }
 };
 
-  }
-};
+
