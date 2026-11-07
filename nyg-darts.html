@@ -49,5 +49,7 @@ function showRanks(element,rows,empty){element.replaceChildren();if(!rows.length
 async function loadRanks(){try{const data=await api("/api/darts/leaderboard");showRanks($("leaderboard"),data.leaderboard||[],"Bado hakuna pointi wiki hii.");showRanks($("previousWinners"),data.previous_week?.winners||[],"Washindi wataonekana baada ya tangazo la Jumapili saa 3:00.");$("weekInfo").textContent="Ubao huanza wiki mpya kila Jumapili saa 3:00 asubuhi (saa za Tanzania). Pointi za mechi zilizokamilika huhifadhiwa."}catch(error){$("weekInfo").textContent=error.message}}
 function tickTimer(){if(!match||match.status!=="open")return;const n=Math.max(0,Math.ceil((turnDeadline-Date.now())/1000));$("turnTimer").textContent=String(Math.floor(n/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0")}
 async function init(){try{const data=await api("/api/members/me");signedIn=!!data.member}catch{}if(signedIn){loadActive();api("/api/darts/presence",{}).catch(()=>{});setInterval(()=>api("/api/darts/presence",{}).catch(()=>{}),18000)}loadRanks();setInterval(loadRanks,30000);setInterval(tickTimer,250);setInterval(()=>{if(signedIn&&match&&match.status==="open"&&!throwBusy)loadActive()},1200)}
-$("onlineBtn").onclick=online;$("computerBtn").onclick=()=>computer(false);init();
+
+$("onlineBtn").onclick=()=>{window.location.href="/nyg-online-darts.html"};$("computerBtn").onclick=()=>computer(false);init();
+
 </script></body></html>
