@@ -57,7 +57,39 @@ function tickTimer(){if(!match||match.status!=="open")return;const n=Math.max(0,
 async function init(){try{const data=await api("/api/members/me");signedIn=!!data.member}catch{}if(signedIn){loadActive();api("/api/darts/presence",{}).catch(()=>{});setInterval(()=>api("/api/darts/presence",{}).catch(()=>{}),18000)}loadRanks();setInterval(loadRanks,30000);setInterval(tickTimer,250);setInterval(()=>{if(signedIn&&match&&match.status==="open"&&!throwBusy)loadActive()},1200)}
 
 
-$("onlineBtn").onclick=()=>{};$("computerBtn").onclick=()=>{window.location.href="/nyg-darts.html"};init();
+
+async function showOnlinePlayers(){
+  const box=$("onlinePlayers");
+  box.hidden=false;
+  box.textContent="Inatafuta wachezaji online...";
+  try{
+    const data=await api("/api/darts/online-players");
+    box.replaceChildren();
+    const players=data.players||[];
+    if(!players.length){
+      box.textContent="Hakuna mchezaji mwingine online kwa sasa.";
+      return;
+    }
+    players.forEach(p=>{
+      const row=document.createElement("div");
+      row.className="rank-card";
+      const name=document.createElement("span");
+      name.textContent="🟢 "+p.name+(p.busy?" — Ana mechi":"");
+      const btn=document.createElement("button");
+      btn.className="btn";
+      btn.textContent=p.busy?"BUSY":"INVITE";
+      btn.disabled=true;
+      row.append(name,btn);
+      box.append(row);
+    });
+  }catch(error){
+    box.textContent=error.message||"Imeshindikana kupata wachezaji online.";
+  }
+}
+$("onlineBtn").onclick=showOnlinePlayers;
+$("computerBtn").onclick=()=>{window.location.href="/nyg-darts.html"};
+init();
+
 
 
 </script></body></html>
