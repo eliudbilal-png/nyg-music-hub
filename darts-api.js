@@ -739,6 +739,91 @@ export async function handleDartsApi(request, env, url, path, method, tools) {
   }
 
 
+  
+  if (path === "/api/darts/accept-invite" && method === "POST") {
+    try {
+      const data = await request.json().catch(() => ({}));
+      const inviteId = String(data.invite_id || "");
+      const now = Date.now();
+
+      const invite = await db.prepare(`
+        SELECT * FROM nyg_darts_invites
+        WHERE id=? AND receiver_id=? AND status='pending'
+      `).bind(inviteId, member.id).first();
+
+      if (!invite) {
+        return tools.reply({
+          error: "Mwaliko haupo au umeshajibiwa."
+        }, 409);
+      }
+
+      const sender = await db.prepare(`
+        SELECT id,full_name FROM members
+        WHERE id=? AND status='active'
+      `).bind(invite.sender_id).first();
+
+      if (!sender) {
+        return tools.reply({
+          error: "Aliyetuma mwaliko hapatikani."
+        }, 404);
+      }
+
+      const busy = await db.prepare(`
+        SELECT id FROM nyg_darts_matches
+        WHERE status='open'
+          AND (player1_id IN (?,?)
+            OR player2_id IN (?,?))
+        LIMIT 1
+      `).bind(sender.id,member.id,sender.id,member.id).first();
+
+      if (busy) {
+        return tools.reply({
+          error: "Mmoja wenu yupo kwenye mechi nyingine."
+        }, 409);
+      }
+
+      const rounds = Number(invite.rounds);
+      if (!Number.isInteger(rounds) || rounds < 5 || rounds > 10) {
+        return tools.reply({error:"Raundi si sahihi."},400);
+      }
+
+      const claimed = await db.prepare(`
+        UPDATE nyg_darts_invites
+        SET status='accepted',updated_at=?
+        WHERE id=? AND receiver_id=? AND status='pending'
+      `).bind(now,inviteId,member.id).run();
+
+      if (Number(claimed.meta?.changes || 0) !== 1) {
+        return tools.reply({
+          error:"Mwaliko umeshajibiwa."
+        },409);
+      }
+
+      const match = await createMatch(
+        db,
+        {id:sender.id,name:sender.full_name},
+        {id:member.id,name:member.full_name || "Mwanachama"},
+        "online",
+        rounds
+      );
+
+      await db.prepare(`
+        UPDATE nyg_darts_invites SET match_id=?
+        WHERE id=?
+      `).bind(match.id,inviteId).run();
+
+      return tools.reply({
+        success:true,
+        status:"accepted",
+        match:matchView(match,member.id)
+      });
+    } catch {
+      return tools.reply({
+        error:"Imeshindikana kukubali mwaliko."
+      },500);
+    }
+  }
+
 
   if (path === "/api/darts/active" && method === "GET") {
     try {
