@@ -21,6 +21,20 @@ async function ensureTables(db) {
         db.prepare("CREATE TABLE IF NOT EXISTS nyg_darts_matches (id TEXT PRIMARY KEY, player1_id TEXT NOT NULL, player2_id TEXT NOT NULL, player1_name TEXT NOT NULL, player2_name TEXT NOT NULL, opponent_type TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', turn_player_id TEXT NOT NULL, round_no INTEGER NOT NULL DEFAULT 1, round_deadline INTEGER NOT NULL DEFAULT 0, player1_visit INTEGER NOT NULL DEFAULT 0, player2_visit INTEGER NOT NULL DEFAULT 0, player1_points INTEGER NOT NULL DEFAULT 0, player2_points INTEGER NOT NULL DEFAULT 0, player1_throws TEXT NOT NULL DEFAULT '[]', player2_throws TEXT NOT NULL DEFAULT '[]', winner_id TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run(),
         db.prepare("CREATE TABLE IF NOT EXISTS nyg_darts_scores (id TEXT PRIMARY KEY, match_id TEXT NOT NULL, member_id TEXT NOT NULL, week_start TEXT NOT NULL, points INTEGER NOT NULL, opponent_type TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(member_id, match_id))").run()
       ]);
+      
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS nyg_darts_invites (
+          id TEXT PRIMARY KEY,
+          sender_id TEXT NOT NULL,
+          receiver_id TEXT NOT NULL,
+          rounds INTEGER NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending',
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          match_id TEXT
+        )
+      `).run();
+
 
       const columns = await db.prepare("PRAGMA table_info(nyg_darts_matches)").all();
 
