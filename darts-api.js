@@ -92,6 +92,15 @@ async function ensureTables(db) {
       updated_at INTEGER NOT NULL,
       match_id TEXT
     )
+    
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS nyg_darts_player_locks (
+      member_id TEXT PRIMARY KEY,
+      match_id TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )
+  `).run();
+
   `).run();
 
   const columns=await db.prepare(
@@ -271,20 +280,12 @@ async function saveScores(db, row, time) {
   await db.batch(statements);
 }
 
+
 async function finishMatch(db, row, time = Date.now()) {
   const latest = await getMatch(db, row.id);
 
   if (!latest) {
     throw new Error("Mechi haipatikani.");
-  }
-
-  if (latest.status === "complete") {
-    await saveScores(
-      db,
-      latest,
-      Number(latest.updated_at)
-    );
-    return latest;
   }
 
   const p1 = Number(latest.player1_points);
@@ -299,55 +300,66 @@ async function finishMatch(db, row, time = Date.now()) {
   const week = weekStart(time);
   const date = new Date(time).toISOString();
 
-  const statements = [
-    db.prepare(`
-      UPDATE nyg_darts_matches
-      SET status = 'complete',
-          winner_id = ?,
-          round_deadline = 0,
-          updated_at = ?
-      WHERE id = ?
-        AND status = 'open'
-        AND updated_at = ?
-    `).bind(
-      winner,
-      time,
-      latest.id,
-      latest.updated_at
-    )
-  ];
+  const statements = [];
 
-  const players = [{
-    id: latest.player1_id,
-    pointsColumn: "player1_points"
-  }];
-
-  if (latest.opponent_type === "online") {
-    players.push({
-      id: latest.player2_id,
-      pointsColumn: "player2_points"
-    });
+  if (latest.status === "open") {
+    statements.push(
+      db.prepare(`
+        UPDATE nyg_darts_matches
+        SET status = 'complete',
+            winner_id = ?,
+            round_deadline = 0,
+            updated_at = ?
+        WHERE id = ?
+          AND status = 'open'
+          AND updated_at = ?
+      `).bind(
+        winner, time, latest.id, latest.updated_at
+      )
+    );
   }
 
-  for (const player of players) {
+  statements.push(
+    db.prepare(`
+      INSERT OR IGNORE INTO nyg_darts_scores (
+        id, match_id, member_id, week_start,
+        points, opponent_type, created_at
+      )
+      SELECT ?, id, player1_id, ?,
+             player1_points, opponent_type, ?
+      FROM nyg_darts_matches
+      WHERE id = ? AND status = 'complete'
+    `).bind(
+      crypto.randomUUID(), week, date, latest.id
+    )
+  );
+
+  if (latest.opponent_type === "online") {
     statements.push(
       db.prepare(`
         INSERT OR IGNORE INTO nyg_darts_scores (
           id, match_id, member_id, week_start,
           points, opponent_type, created_at
         )
-        SELECT ?, id, ?, ?, ${player.pointsColumn},
-               opponent_type, ?
+        SELECT ?, id, player2_id, ?,
+               player2_points, opponent_type, ?
         FROM nyg_darts_matches
-        WHERE id = ?
-          AND status = 'complete'
+        WHERE id = ? AND status = 'complete'
       `).bind(
-        crypto.randomUUID(),
-        player.id,
-        week,
-        date,
-        latest.id
+        crypto.randomUUID(), week, date, latest.id
       )
+    );
+
+    statements.push(
+      db.prepare(`
+        DELETE FROM nyg_darts_player_locks
+        WHERE match_id = ?
+          AND EXISTS (
+            SELECT 1 FROM nyg_darts_matches
+            WHERE id = ?
+              AND status = 'complete'
+          )
+      `).bind(latest.id, latest.id)
     );
   }
 
@@ -870,7 +882,7 @@ export async function handleDartsApi(
 
       if(await getBusy(db,invite.sender_id,memberId)) {
         return reply({
-          error:"Mmoja wenu ana mechi inayoendelea."
+          error:"Mchezaji huyu yupo kwenye mechi na mchezaji mwingine. Tafadhali subiri amalize."
         },409);
       }
 
@@ -880,48 +892,71 @@ export async function handleDartsApi(
         return reply({error:"Raundi si sahihi."},400);
       }
 
-      const matchId=crypto.randomUUID();
-
-      const claimed=await db.prepare(`
-        UPDATE nyg_darts_invites
-        SET status='accepted',
-            match_id=?,
-            updated_at=?
-        WHERE id=? AND receiver_id=?
-          AND status='pending'
-      `).bind(matchId,now,id,memberId).run();
-
-      if(Number(claimed.meta?.changes||0)!==1) {
-        return reply({
-          error:"Mwaliko umeshajibiwa."
-        },409);
-      }
+      
+      const matchId = crypto.randomUUID();
 
       try {
-        await db.prepare(`
-          INSERT INTO nyg_darts_matches (
-            id,player1_id,player2_id,
-            player1_name,player2_name,
-            opponent_type,status,turn_player_id,
-            round_no,round_deadline,rounds_total,
-            created_at,updated_at
-          ) VALUES (?,?,?,?,?,'online','open',?,1,?,?,?,?)
-        `).bind(
-          matchId,sender.member_id,memberId,
-          sender.full_name,memberName,
-          sender.member_id,now+TURN_MS,
-          rounds,now,now
-        ).run();
-      }catch(error) {
-        await db.prepare(`
-          UPDATE nyg_darts_invites
-          SET status='pending',match_id=NULL,
-              updated_at=?
-          WHERE id=? AND match_id=?
-            AND status='accepted'
-        `).bind(Date.now(),id,matchId).run();
-        throw error;
+        await db.batch([
+          db.prepare(`
+            INSERT INTO nyg_darts_player_locks
+              (member_id, match_id, created_at)
+            VALUES (?, ?, ?)
+          `).bind(invite.sender_id, matchId, now),
+
+          db.prepare(`
+            INSERT INTO nyg_darts_player_locks
+              (member_id, match_id, created_at)
+            VALUES (?, ?, ?)
+          `).bind(memberId, matchId, now),
+
+          db.prepare(`
+            INSERT INTO nyg_darts_matches (
+              id, player1_id, player2_id,
+              player1_name, player2_name,
+              opponent_type, status, turn_player_id,
+              round_no, round_deadline, rounds_total,
+              created_at, updated_at
+            )
+            SELECT ?, ?, ?, ?, ?,
+                   'online', 'open', ?,
+                   1, ?, ?, ?, ?
+            WHERE EXISTS (
+              SELECT 1 FROM nyg_darts_invites
+              WHERE id = ?
+                AND receiver_id = ?
+                AND status = 'pending'
+            )
+          `).bind(
+            matchId,
+            sender.member_id,
+            memberId,
+            sender.full_name,
+            memberName,
+            sender.member_id,
+            now + TURN_MS,
+            rounds,
+            now,
+            now,
+            id,
+            memberId
+          ),
+
+          db.prepare(`
+            UPDATE nyg_darts_invites
+            SET status = 'accepted',
+                match_id = ?,
+                updated_at = ?
+            WHERE id = ?
+              AND receiver_id = ?
+              AND status = 'pending'
+          `).bind(matchId, now, id, memberId)
+        ]);
+      } catch (error) {
+        return reply({
+          error: "Mchezaji huyu yupo kwenye mechi na mchezaji mwingine. Tafadhali subiri amalize."
+        }, 409);
       }
+
 
       const match=await getMatch(db,matchId);
 
