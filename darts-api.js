@@ -93,14 +93,15 @@ async function ensureTables(db) {
       match_id TEXT
     )
     
+  
+  `).run();
+
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS nyg_darts_player_locks (
       member_id TEXT PRIMARY KEY,
       match_id TEXT NOT NULL,
       created_at INTEGER NOT NULL
     )
-  `).run();
-
   `).run();
 
   const columns=await db.prepare(
