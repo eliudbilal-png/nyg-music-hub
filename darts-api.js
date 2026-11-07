@@ -530,6 +530,42 @@ export async function handleDartsApi(request, env, url, path, method, tools) {
 
     return tools.reply({ online: Number(count?.total || 1) });
   }
+  
+  if (path === "/api/darts/online-players" && method === "GET") {
+    try {
+      const now = Date.now();
+
+      const result = await db.prepare(`
+        SELECT
+          p.member_id AS id,
+          p.full_name AS name,
+          CASE WHEN EXISTS (
+            SELECT 1 FROM nyg_darts_matches m
+            WHERE m.status = 'open'
+              AND (m.player1_id = p.member_id
+                OR m.player2_id = p.member_id)
+          ) THEN 1 ELSE 0 END AS busy
+        FROM nyg_darts_presence p
+        WHERE p.last_seen > ?
+          AND p.member_id <> ?
+        ORDER BY p.full_name COLLATE NOCASE ASC
+      `).bind(now - 60000, member.id).all();
+
+      return tools.reply({
+        players: (result.results || []).map(p => ({
+          id: p.id,
+          name: p.name,
+          online: true,
+          busy: Number(p.busy) === 1
+        }))
+      });
+    } catch {
+      return tools.reply({
+        error: "Imeshindikana kupata wachezaji online."
+      }, 500);
+    }
+  }
+
 
   if (path === "/api/darts/active" && method === "GET") {
     try {
