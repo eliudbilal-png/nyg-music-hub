@@ -1,4 +1,6 @@
-import { handleDartsApi } from './darts-api.js';
+
+import { handleDartsApi, runDartsScheduled } from './darts-api.js';
+
 const enc = new TextEncoder();
 
 function base64url(bytes) {
@@ -3527,7 +3529,13 @@ if (path === '/api/testimonies/admin/delete-comment' &&
       });
     }
 
-    // STATIC WEBSITE ASSETS
-    return env.ASSETS.fetch(request);
+    
+  },
+
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runDartsScheduled(env));
+  }
+};
+
   }
 };
