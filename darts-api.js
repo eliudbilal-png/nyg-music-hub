@@ -232,66 +232,130 @@ function computerThrow() {
   };
 }
 
-async function saveScores(db,row,time) {
-  const week=weekStart(time);
-  const date=new Date(time).toISOString();
 
-  const players=[{
-    id:row.player1_id,
-    points:Number(row.player1_points)
+async function saveScores(db, row, time) {
+  const week = weekStart(time);
+  const date = new Date(time).toISOString();
+
+  const players = [{
+    id: row.player1_id,
+    points: Number(row.player1_points)
   }];
 
-  if(row.opponent_type==="online") {
+  if (row.opponent_type === "online") {
     players.push({
-      id:row.player2_id,
-      points:Number(row.player2_points)
+      id: row.player2_id,
+      points: Number(row.player2_points)
     });
   }
 
-  await db.batch(players.map(p=>db.prepare(`
-    INSERT OR IGNORE INTO nyg_darts_scores (
-      id,match_id,member_id,week_start,
-      points,opponent_type,created_at
-    ) VALUES (?,?,?,?,?,?,?)
-  `).bind(
-    crypto.randomUUID(),row.id,p.id,week,
-    p.points,row.opponent_type,date
-  )));
+  const statements = players.map(p =>
+    db.prepare(`
+      INSERT OR IGNORE INTO nyg_darts_scores (
+        id, match_id, member_id, week_start,
+        points, opponent_type, created_at
+      )
+      SELECT ?, id, ?, ?, ?, opponent_type, ?
+      FROM nyg_darts_matches
+      WHERE id = ? AND status = 'complete'
+    `).bind(
+      crypto.randomUUID(),
+      p.id,
+      week,
+      p.points,
+      date,
+      row.id
+    )
+  );
+
+  await db.batch(statements);
 }
 
-async function finishMatch(db,row,time=Date.now()) {
-  if(row.status==="complete") {
-    await saveScores(db,row,Number(row.updated_at));
-    return row;
+async function finishMatch(db, row, time = Date.now()) {
+  const latest = await getMatch(db, row.id);
+
+  if (!latest) {
+    throw new Error("Mechi haipatikani.");
   }
 
-  const p1=Number(row.player1_points);
-  const p2=Number(row.player2_points);
-  const winner=p1===p2?null:
-    p1>p2?row.player1_id:row.player2_id;
-
-  const result=await db.prepare(`
-    UPDATE nyg_darts_matches
-    SET status='complete',
-        winner_id=?,
-        round_deadline=0,
-        updated_at=?
-    WHERE id=? AND status='open'
-      AND updated_at=?
-  `).bind(
-    winner,time,row.id,row.updated_at
-  ).run();
-
-  const saved=await getMatch(db,row.id);
-
-  if(saved.status==="complete") {
+  if (latest.status === "complete") {
     await saveScores(
-      db,saved,Number(saved.updated_at)
+      db,
+      latest,
+      Number(latest.updated_at)
+    );
+    return latest;
+  }
+
+  const p1 = Number(latest.player1_points);
+  const p2 = Number(latest.player2_points);
+
+  const winner = p1 === p2
+    ? null
+    : p1 > p2
+      ? latest.player1_id
+      : latest.player2_id;
+
+  const week = weekStart(time);
+  const date = new Date(time).toISOString();
+
+  const statements = [
+    db.prepare(`
+      UPDATE nyg_darts_matches
+      SET status = 'complete',
+          winner_id = ?,
+          round_deadline = 0,
+          updated_at = ?
+      WHERE id = ?
+        AND status = 'open'
+        AND updated_at = ?
+    `).bind(
+      winner,
+      time,
+      latest.id,
+      latest.updated_at
+    )
+  ];
+
+  const players = [{
+    id: latest.player1_id,
+    pointsColumn: "player1_points"
+  }];
+
+  if (latest.opponent_type === "online") {
+    players.push({
+      id: latest.player2_id,
+      pointsColumn: "player2_points"
+    });
+  }
+
+  for (const player of players) {
+    statements.push(
+      db.prepare(`
+        INSERT OR IGNORE INTO nyg_darts_scores (
+          id, match_id, member_id, week_start,
+          points, opponent_type, created_at
+        )
+        SELECT ?, id, ?, ?, ${player.pointsColumn},
+               opponent_type, ?
+        FROM nyg_darts_matches
+        WHERE id = ?
+          AND status = 'complete'
+      `).bind(
+        crypto.randomUUID(),
+        player.id,
+        week,
+        date,
+        latest.id
+      )
     );
   }
 
-  return saved;
+  await db.batch(statements);
+
+  return await getMatch(db, latest.id);
 }
+
 
 async function updateMatchClock(db,initial) {
   let row=initial;
