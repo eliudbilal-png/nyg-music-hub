@@ -455,6 +455,58 @@ export async function handleDartsApi(request, env, url, path, method, tools) {
     }
   }
 
+  if (path === "/api/darts/online-results" && method === "GET") {
+    try {
+      const current = weekStart(Date.now());
+      const next = new Date(Date.parse(current) + WEEK).toISOString();
+
+      const result = await db.prepare(`
+        SELECT
+          id AS match_id,
+          player1_name,
+          player2_name,
+          player1_points,
+          player2_points,
+          winner_id,
+          player1_id,
+          player2_id,
+          updated_at
+        FROM nyg_darts_matches
+        WHERE opponent_type = 'online'
+          AND status = 'complete'
+          AND updated_at >= ?
+          AND updated_at < ?
+        ORDER BY updated_at DESC, id DESC
+      `).bind(Date.parse(current), Date.parse(next)).all();
+
+      const matches = (result.results || []).map(row => ({
+        match_id: row.match_id,
+        player1: row.player1_name,
+        player2: row.player2_name,
+        points1: Number(row.player1_points || 0),
+        points2: Number(row.player2_points || 0),
+        winner: row.winner_id === row.player1_id
+          ? row.player1_name
+          : row.winner_id === row.player2_id
+            ? row.player2_name
+            : null,
+        status: row.winner_id ? "WIN" : "DRAW",
+        completed_at: new Date(row.updated_at).toISOString()
+      }));
+
+      return tools.reply({
+        week_start: current,
+        next_reset_at: next,
+        total_matches: matches.length,
+        matches
+      });
+    } catch {
+      return tools.reply({
+        error: "Imeshindikana kupata matokeo ya ONLINE DARTS."
+      }, 500);
+    }
+  }
+
   const member = await tools.getMember(request, env);
 
   if (!member) {
