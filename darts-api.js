@@ -579,6 +579,83 @@ export async function handleDartsApi(request, env, url, path, method, tools) {
       }, 500);
     }
   }
+  
+  if (path === "/api/darts/invite" && method === "POST") {
+    try {
+      const data = await request.json().catch(() => ({}));
+      const receiverId = String(data.receiver_id || "");
+      const rounds = Number(data.rounds);
+      const now = Date.now();
+
+      if (!receiverId || receiverId === member.id ||
+          !Number.isInteger(rounds) || rounds < 5 || rounds > 10) {
+        return tools.reply({
+          error: "Chagua mchezaji mwingine na raundi 5 hadi 10."
+        }, 400);
+      }
+
+      const receiver = await db.prepare(`
+        SELECT member_id, full_name
+        FROM nyg_darts_presence
+        WHERE member_id=? AND last_seen>?
+      `).bind(receiverId, now - 60000).first();
+
+      if (!receiver) {
+        return tools.reply({
+          error: "Mchezaji hayupo online kwa sasa."
+        }, 404);
+      }
+
+      const busy = await db.prepare(`
+        SELECT id FROM nyg_darts_matches
+        WHERE status='open'
+          AND (player1_id IN (?,?)
+            OR player2_id IN (?,?))
+        LIMIT 1
+      `).bind(member.id, receiverId, member.id, receiverId).first();
+
+      if (busy) {
+        return tools.reply({
+          error: "Mmoja wenu yupo kwenye mechi nyingine."
+        }, 409);
+      }
+
+      const existing = await db.prepare(`
+        SELECT id FROM nyg_darts_invites
+        WHERE status='pending'
+          AND (sender_id IN (?,?)
+            OR receiver_id IN (?,?))
+        LIMIT 1
+      `).bind(member.id, receiverId, member.id, receiverId).first();
+
+      if (existing) {
+        return tools.reply({
+          error: "Mmoja wenu ana mwaliko unaosubiri majibu."
+        }, 409);
+      }
+
+      const id = crypto.randomUUID();
+
+      await db.prepare(`
+        INSERT INTO nyg_darts_invites
+        (id,sender_id,receiver_id,rounds,status,created_at,updated_at)
+        VALUES (?,?,?,?,'pending',?,?)
+      `).bind(id, member.id, receiverId, rounds, now, now).run();
+
+      return tools.reply({
+        success: true,
+        invite_id: id,
+        receiver_name: receiver.full_name,
+        rounds,
+        status: "pending"
+      });
+    } catch {
+      return tools.reply({
+        error: "Imeshindikana kutuma mwaliko."
+      }, 500);
+    }
+  }
+
 
 
   if (path === "/api/darts/active" && method === "GET") {
