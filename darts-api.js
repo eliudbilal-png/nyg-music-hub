@@ -133,7 +133,9 @@ async function createMatch(db, p1, p2, type, rounds = 3) {
   const now = Date.now();
 
   await db.prepare(
-    "INSERT INTO nyg_darts_matches (id,player1_id,player2_id,player1_name,player2_name,opponent_type,status,turn_player_id,round_no,round_deadline,created_at,updated_at) VALUES (?,?,?,?,?,?,'open',?,1,?,?,?)"
+
+    "INSERT INTO nyg_darts_matches (id,player1_id,player2_id,player1_name,player2_name,opponent_type,status,turn_player_id,round_no,round_deadline,rounds_total,created_at,updated_at) VALUES (?,?,?,?,?,?,'open',?,1,?,?,?,?)"
+
   ).bind(
     id,
     p1.id,
@@ -143,6 +145,9 @@ async function createMatch(db, p1, p2, type, rounds = 3) {
     type,
     p1.id,
     now + TURN_MS,
+    
+    rounds,
+
     now,
     now
   ).run();
