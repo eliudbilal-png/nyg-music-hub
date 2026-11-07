@@ -982,6 +982,12 @@ export async function handleDartsApi(
 
       const match=await getMatch(db,matchId);
 
+      if (!match) {
+        return reply({
+          error: "Mechi haijaundwa. Tafadhali tuma mwaliko mpya."
+        }, 409);
+      }
+
       return reply({
         success:true,
         status:"accepted",
