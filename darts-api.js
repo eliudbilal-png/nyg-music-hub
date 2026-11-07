@@ -689,6 +689,35 @@ export async function handleDartsApi(request, env, url, path, method, tools) {
       }, 500);
     }
   }
+  
+  if (path === "/api/darts/decline-invite" && method === "POST") {
+    try {
+      const data = await request.json().catch(() => ({}));
+      const inviteId = String(data.invite_id || "");
+      if (!inviteId) {
+        return tools.reply({error:"Mwaliko haujachaguliwa."},400);
+      }
+
+      const result = await db.prepare(`
+        UPDATE nyg_darts_invites
+        SET status='declined', updated_at=?
+        WHERE id=? AND receiver_id=? AND status='pending'
+      `).bind(Date.now(),inviteId,member.id).run();
+
+      if (Number(result.meta?.changes || 0) !== 1) {
+        return tools.reply({
+          error:"Mwaliko haupo au umeshajibiwa."
+        },409);
+      }
+
+      return tools.reply({success:true,status:"declined"});
+    } catch {
+      return tools.reply({
+        error:"Imeshindikana kukataa mwaliko."
+      },500);
+    }
+  }
+
 
 
   if (path === "/api/darts/active" && method === "GET") {
