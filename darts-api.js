@@ -1217,3 +1217,55 @@ export async function handleDartsApi(
     error:"Njia ya NYG DARTS haipatikani."
   },404);
 }
+
+export async function runDartsScheduled(env) {
+  if (!env.MEMBERS_DB) {
+    console.error("NYG DARTS: MEMBERS_DB haijaunganishwa.");
+    return;
+  }
+
+  const db = env.MEMBERS_DB;
+
+  await ensureTables(db);
+
+  let processed = 0;
+
+  for (let page = 0; page < 10; page++) {
+    const now = Date.now();
+
+    const result = await db.prepare(`
+      SELECT *
+      FROM nyg_darts_matches
+      WHERE status = 'open'
+        AND round_deadline > 0
+        AND round_deadline <= ?
+      ORDER BY round_deadline ASC
+      LIMIT 50
+    `).bind(now).all();
+
+    const matches = result.results || [];
+
+    if (matches.length === 0) break;
+
+    for (const match of matches) {
+      try {
+        await updateMatchClock(db, match);
+        processed++;
+      } catch (error) {
+        console.error(
+          "NYG DARTS: Hitilafu ya mechi",
+          match.id,
+          error
+        );
+      }
+    }
+
+    if (matches.length < 50) break;
+  }
+
+  console.log(
+    "NYG DARTS: Mechi zilizokaguliwa:",
+    processed
+  );
+}
+
