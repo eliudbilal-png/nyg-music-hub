@@ -897,11 +897,22 @@ export async function handleDartsApi(
 
       try {
         await db.batch([
+          
           db.prepare(`
             INSERT INTO nyg_darts_player_locks
               (member_id, match_id, created_at)
-            VALUES (?, ?, ?)
-          `).bind(invite.sender_id, matchId, now),
+            SELECT ?, ?, ?
+            WHERE EXISTS (
+              SELECT 1 FROM nyg_darts_invites
+              WHERE id = ?
+                AND receiver_id = ?
+                AND status = 'pending'
+            )
+          `).bind(
+            invite.sender_id, matchId, now,
+            id, memberId
+          ),
+
 
           db.prepare(`
             INSERT INTO nyg_darts_player_locks
