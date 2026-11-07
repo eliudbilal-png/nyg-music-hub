@@ -126,7 +126,9 @@ async function getMemberMatch(db, id, memberId) {
   ).bind(id, memberId, memberId).first();
 }
 
-async function createMatch(db, p1, p2, type) {
+
+async function createMatch(db, p1, p2, type, rounds = 3) {
+
   const id = crypto.randomUUID();
   const now = Date.now();
 
