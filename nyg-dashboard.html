@@ -147,6 +147,15 @@
 
   <a href="/nyg-darts.html">Cheza NYG Darts</a>
 </section>
+      
+<section id="onlineDartsResults" class="quiz-results">
+  <h2>🎯 ONLINE DARTS — MATOKEO YA WIKI</h2>
+  <p id="onlineDartsStatus" class="muted">
+    Inapakia matokeo ya ONLINE DARTS...
+  </p>
+  <div id="onlineDartsMatches"></div>
+</section>
+
       <a href="/nyg-market-place.html">Endelea kwenye NYG Friends</a>
     </section>
   </main>
@@ -504,6 +513,76 @@ prize.textContent = eligible
       error.message || 'Imeshindikana kupakia matokeo ya NYG DARTS.';
   }
 }
+  
+async function loadOnlineDartsResults() {
+  const status = document.getElementById('onlineDartsStatus');
+  const list = document.getElementById('onlineDartsMatches');
+
+  if (!status || !list) return;
+
+  try {
+    const response = await fetch('/api/darts/online-results', {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store'
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || data.error) {
+      throw new Error(data.error || 'Imeshindikana kupata matokeo.');
+    }
+
+    list.replaceChildren();
+
+    const matches = Array.isArray(data.matches) ? data.matches : [];
+
+    if (matches.length === 0) {
+      status.textContent = 'Hakuna mechi za ONLINE DARTS zilizokamilika wiki hii.';
+      return;
+    }
+
+    status.textContent = 'Jumla ya mechi za wiki hii: ' + matches.length;
+
+    matches.forEach((match, index) => {
+      const card = document.createElement('article');
+      card.className = 'quiz-card';
+
+      const heading = document.createElement('h3');
+      heading.textContent = '🎯 MECHI ' + (matches.length - index);
+
+      const players = document.createElement('p');
+      players.textContent =
+        match.player1 + ' [Pts ' + Number(match.points1).toLocaleString() + ']' +
+        ' VS ' +
+        match.player2 + ' [Pts ' + Number(match.points2).toLocaleString() + ']';
+
+      const winner = document.createElement('p');
+      winner.style.fontWeight = 'bold';
+      winner.textContent = match.winner
+        ? '🏺 WINNER: ' + match.winner
+        : '🤝 DRAW — SARE';
+
+      const date = document.createElement('p');
+      date.className = 'muted';
+
+      if (match.completed_at) {
+        date.textContent = 'Imekamilika: ' +
+          new Date(match.completed_at).toLocaleString('sw-TZ', {
+            timeZone: 'Africa/Dar_es_Salaam'
+          });
+      }
+
+      card.append(heading, players, winner, date);
+      list.appendChild(card);
+    });
+
+  } catch (error) {
+    status.textContent =
+      error.message || 'Imeshindikana kupakia matokeo ya ONLINE DARTS.';
+  }
+}
+  
 async function loadMember() {
       const status = document.getElementById('status');
 
@@ -534,6 +613,7 @@ async function loadMember() {
         loadQuizResults();
         loadPuzzleResults();
         loadDartsResults();
+        loadOnlineDartsResults();
       } catch {
         status.textContent =
           'Imeshindikana kuwasiliana na mfumo. Jaribu tena.';
@@ -543,6 +623,7 @@ async function loadMember() {
     loadMember();
     setInterval(loadQuizResults, 15000);
     setInterval(loadDartsResults, 30000);
+    setInterval(loadOnlineDartsResults, 5000);
     setInterval(loadPuzzleResults, 5000);
     window.addEventListener('focus', loadPuzzleResults);
   </script>
