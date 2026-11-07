@@ -657,6 +657,39 @@ export async function handleDartsApi(request, env, url, path, method, tools) {
   }
 
 
+  
+  if (path === "/api/darts/invitations" && method === "GET") {
+    try {
+      const result = await db.prepare(`
+        SELECT
+          i.id,
+          i.sender_id,
+          p.full_name AS sender_name,
+          i.rounds,
+          i.created_at
+        FROM nyg_darts_invites i
+        LEFT JOIN members p ON p.id = i.sender_id
+        WHERE i.receiver_id = ?
+          AND i.status = 'pending'
+        ORDER BY i.created_at DESC
+      `).bind(member.id).all();
+
+      return tools.reply({
+        invitations: (result.results || []).map(i => ({
+          id: i.id,
+          sender_id: i.sender_id,
+          sender_name: i.sender_name || "Mwanachama",
+          rounds: Number(i.rounds),
+          created_at: i.created_at
+        }))
+      });
+    } catch {
+      return tools.reply({
+        error: "Imeshindikana kupata mialiko."
+      }, 500);
+    }
+  }
+
 
   if (path === "/api/darts/active" && method === "GET") {
     try {
