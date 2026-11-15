@@ -323,20 +323,90 @@ prize.style.marginTop = '8px';
       ? data.previous_week.leaderboard
       : [];
 
-    if (lastWeek.length > 0) {
+        if (lastWeek.length > 0) {
       previousWinner.hidden = false;
       previousWinner.replaceChildren();
 
       const heading = document.createElement('h3');
-      heading.textContent = 'Mshindi wa wiki iliyopita';
+      heading.textContent = '🏆 Washindi wa wiki iliyopita';
+      previousWinner.appendChild(heading);
 
-      const result = document.createElement('p');
-      result.textContent = lastWeek[0].full_name +
-        ' — stage ' + lastWeek[0].stages_completed +
-        '/20, hatua ' + lastWeek[0].total_moves +
-        ', muda ' + formatPuzzleDuration(lastWeek[0].total_seconds);
+      const prizes = Array.isArray(data.previous_week?.prizes)
+        ? data.previous_week.prizes
+        : [];
 
-      previousWinner.append(heading, result);
+      const myCode = document.getElementById('memberCode')
+        .textContent.trim();
+
+      lastWeek.slice(0, 3).forEach(player => {
+        const rank = Number(player.rank);
+        const stages = Number(player.stages_completed);
+        const prizeText = prizes[rank - 1] || '';
+        const eligible = rank >= 1 && rank <= 3 && stages >= 3;
+
+        const card = document.createElement('article');
+        card.className = 'quiz-card';
+        card.style.background = '#fff7df';
+        card.style.border = '1px solid #e6cf77';
+
+        const title = document.createElement('h3');
+        title.textContent = rank + '. ' +
+          (player.full_name || 'Mwanachama');
+
+        const result = document.createElement('p');
+        result.textContent =
+          'Stage: ' + stages + '/20' +
+          ' | Hatua: ' + player.total_moves +
+          ' | Muda: ' + formatPuzzleDuration(player.total_seconds);
+
+        const prize = document.createElement('p');
+        prize.style.color = '#986600';
+        prize.style.fontWeight = '800';
+
+        prize.textContent = eligible
+          ? '🎁 ZAWADI: ' + (prizeText || 'Bado haijawekwa')
+          : '🎁 ZAWADI: Hujakidhi masharti';
+
+        card.append(title, result, prize);
+
+        if (!eligible) {
+          const notice = document.createElement('p');
+          notice.textContent =
+            'Ili kupata zawadi lazima ukamilishe angalau Stage 3.';
+          card.appendChild(notice);
+        }
+
+        const isOwner = myCode &&
+          player.member_code &&
+          myCode === String(player.member_code).trim();
+
+        if (eligible && isOwner && prizeText) {
+          const message = [
+            'NYG PURZLE - DAI ZAWADI',
+            'Jina: ' + player.full_name,
+            'Namba ya mwanachama: ' + myCode,
+            'Nafasi: ' + rank,
+            'Stage: ' + stages + '/20',
+            'Zawadi: ' + prizeText,
+            'Wiki: ' + data.previous_week.week_start,
+            'Naomba kuthibitishiwa ushindi na kupokea zawadi yangu.'
+          ].join('\n');
+
+          const link = document.createElement('a');
+          link.href = 'https://wa.me/255755498731?text=' +
+            encodeURIComponent(message);
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent = 'DAI ZAWADI YAKO WHATSAPP';
+          link.style.background = '#16803c';
+          link.style.color = '#ffffff';
+          link.style.marginTop = '10px';
+
+          card.appendChild(link);
+        }
+
+        previousWinner.appendChild(card);
+      });
     } else {
       previousWinner.hidden = true;
     }
