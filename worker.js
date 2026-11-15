@@ -506,6 +506,25 @@ async function ensurePuzzleCompetitionSettings(env) {
     INSERT OR IGNORE INTO nyg_puzzle_competition_schedule
       (id, start_time, announcement_time) VALUES (1, '00:00', '23:59')
   `).run();
+    await env.QUIZ_DB.prepare(`
+    CREATE TABLE IF NOT EXISTS nyg_puzzle_prize_history (
+      week_start TEXT PRIMARY KEY,
+      prize_1 TEXT NOT NULL DEFAULT '',
+      prize_2 TEXT NOT NULL DEFAULT '',
+      prize_3 TEXT NOT NULL DEFAULT ''
+    )
+  `).run();
+
+  await env.QUIZ_DB.prepare(`
+    INSERT OR IGNORE INTO nyg_puzzle_prize_history
+      (week_start, prize_1, prize_2, prize_3)
+    VALUES (?, ?, ?, ?)
+  `).bind(
+    '2026-11-07',
+    'Bundle 5000',
+    'Bundle 3000',
+    'Bundle 2000'
+  ).run();
 }
 
 async function getPuzzleCompetition(env, timestamp = Date.now()) {
@@ -531,6 +550,16 @@ async function getPuzzleCompetition(env, timestamp = Date.now()) {
   const endDate = addPuzzleDays(startDate, durationDays - 1);
   const endMs = Date.parse(endDate + 'T' + announcementTime + ':00+03:00');
 
+    await env.QUIZ_DB.prepare(`
+    INSERT OR IGNORE INTO nyg_puzzle_prize_history
+      (week_start, prize_1, prize_2, prize_3)
+    VALUES (?, ?, ?, ?)
+  `).bind(
+    configuredStart,
+    settings?.prize_1 || '',
+    settings?.prize_2 || '',
+    settings?.prize_3 || ''
+  ).run();
   if (startDate !== configuredStart) {
     await env.QUIZ_DB.prepare(`
       UPDATE nyg_puzzle_competition_settings SET competition_start = ? WHERE id = 1
@@ -990,6 +1019,22 @@ if (row.member_id) {
       return reply({ error: 'Weka zawadi za nafasi zote tatu; kila moja isiwe zaidi ya herufi 200.' }, 400);
     }
 
+        await getPuzzleCompetition(env);
+
+    await env.QUIZ_DB.prepare(`
+      INSERT INTO nyg_puzzle_prize_history
+        (week_start, prize_1, prize_2, prize_3)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(week_start) DO UPDATE SET
+        prize_1 = excluded.prize_1,
+        prize_2 = excluded.prize_2,
+        prize_3 = excluded.prize_3
+    `).bind(
+      startDate,
+      String(prizes[0] || '').trim(),
+      String(prizes[1] || '').trim(),
+      String(prizes[2] || '').trim()
+    ).run();
     await env.QUIZ_DB.prepare(`
       UPDATE nyg_puzzle_competition_settings
       SET duration_days = ?, prize_1 = ?, prize_2 = ?, prize_3 = ?, competition_start = ?
@@ -1057,6 +1102,11 @@ if (row.member_id) {
 
     const leaderboard = await getPuzzleLeaderboard(env, weekStart);
     const previousLeaderboard = await getPuzzleLeaderboard(env, previousWeekStart);
+        const previousPrizes = await env.QUIZ_DB.prepare(`
+      SELECT prize_1, prize_2, prize_3
+      FROM nyg_puzzle_prize_history
+      WHERE week_start = ?
+    `).bind(previousWeekStart).first();
 
     return reply({
       week_start: weekStart,
@@ -1071,6 +1121,11 @@ if (row.member_id) {
       leaderboard,
       previous_week: {
         week_start: previousWeekStart,
+                prizes: [
+          previousPrizes?.prize_1 || '',
+          previousPrizes?.prize_2 || '',
+          previousPrizes?.prize_3 || ''
+        ],
         leaderboard: previousLeaderboard
       }
     });
